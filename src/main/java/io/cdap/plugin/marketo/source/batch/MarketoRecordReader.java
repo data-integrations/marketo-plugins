@@ -18,37 +18,71 @@ package io.cdap.plugin.marketo.source.batch;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import io.cdap.plugin.marketo.common.Marketo;
+import io.cdap.cdap.api.data.schema.Schema;
+import io.cdap.plugin.marketo.common.api.LeadsExportJob;
+import io.cdap.plugin.marketo.common.api.Marketo;
+import io.cdap.plugin.marketo.common.api.entities.leads.LeadsExportRequest;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.StringReader;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * RecordReader implementation, which reads events from Marketo api.
  */
-public class MarketoRecordReader extends RecordReader<NullWritable, Map<String, Object>> {
+public class MarketoRecordReader extends RecordReader<NullWritable, Map<String, String>> {
+  private static final Logger LOG = LoggerFactory.getLogger(MarketoRecordReader.class);
   private static final Gson GSON = new GsonBuilder().create();
-  private Marketo.MarketoPageIterator iterator;
-  private Map<String, Object> current = null;
+  private Map<String, String> current = null;
+  private Iterator<CSVRecord> iterator = null;
 
   @Override
   public void initialize(InputSplit inputSplit, TaskAttemptContext taskAttemptContext) throws IOException {
     Configuration conf = taskAttemptContext.getConfiguration();
     String configJson = conf.get(MarketoInputFormatProvider.PROPERTY_CONFIG_JSON);
-    MarketoBatchSourceConfig config = GSON.fromJson(configJson, MarketoBatchSourceConfig.class);
+    MarketoReportingSourceConfig config = GSON.fromJson(configJson, MarketoReportingSourceConfig.class);
 
-    iterator = config.getMarketo().iteratePage(config.getEntityType().getGetEndpoint());
+    Marketo marketo = config.getMarketo();
+
+    List<String> fields = config.getSchema().getFields().stream()
+      .map(Schema.Field::getName).collect(Collectors.toList());
+    LeadsExportRequest.ExportLeadFilter filter = LeadsExportRequest.ExportLeadFilter.builder()
+      .createdAt(new LeadsExportRequest.DateRange(config.getStartDate(), config.getEndDate())).build();
+    LeadsExportRequest request = new LeadsExportRequest(fields, filter);
+
+    LeadsExportJob job = marketo.exportLeads(request);
+    job.enqueue();
+    try {
+      job.waitCompletion();
+    } catch (InterruptedException ex) {
+      throw new RuntimeException(ex);
+    }
+
+    String data = job.getFile();
+    LOG.info(data);
+    CSVParser parser = CSVFormat.DEFAULT.withHeader().parse(new StringReader(data));
+    iterator = parser.iterator();
+//    iterator = config.getMarketo().iteratePage(config.getEntityType().getGetEndpoint());
   }
 
   @Override
   public boolean nextKeyValue() {
     if (iterator.hasNext()) {
-      current = iterator.next();
+      current = iterator.next().toMap();
+      LOG.debug("Got record '{}'", current.toString());
       return true;
     }
     return false;
@@ -60,7 +94,7 @@ public class MarketoRecordReader extends RecordReader<NullWritable, Map<String, 
   }
 
   @Override
-  public Map<String, Object> getCurrentValue() {
+  public Map<String, String> getCurrentValue() {
     return current;
   }
 

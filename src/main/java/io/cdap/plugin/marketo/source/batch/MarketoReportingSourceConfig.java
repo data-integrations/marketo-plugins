@@ -21,15 +21,17 @@ import io.cdap.cdap.api.annotation.Macro;
 import io.cdap.cdap.api.annotation.Name;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.plugin.common.ReferencePluginConfig;
-import io.cdap.plugin.marketo.common.Marketo;
-import io.cdap.plugin.marketo.common.MarketoEntity;
-import io.cdap.plugin.marketo.common.MarketoSchemaReader;
-import io.cdap.plugin.marketo.common.MarketoToken;
+import io.cdap.plugin.marketo.common.api.Marketo;
+import io.cdap.plugin.marketo.common.api.entities.MarketoToken;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Provides all required configuration for reading Marketo entities.
  */
-public class MarketoBatchSourceConfig extends ReferencePluginConfig {
+public class MarketoReportingSourceConfig extends ReferencePluginConfig {
   public static final String PROPERTY_ENTITY_NAME = "entityName";
   public static final String PROPERTY_CLIENT_ID = "clientId";
   public static final String PROPERTY_CLIENT_SECRET = "clientSecret";
@@ -90,13 +92,23 @@ public class MarketoBatchSourceConfig extends ReferencePluginConfig {
   private transient Schema schema = null;
   private transient Marketo marketo = null;
 
-  public MarketoBatchSourceConfig(String referenceName) {
+  public MarketoReportingSourceConfig(String referenceName) {
     super(referenceName);
   }
 
   public Schema getSchema() {
     if (schema == null) {
-      schema = MarketoSchemaReader.getSchemaForEntity(getEntityType(), getMarketo());
+      List<Schema.Field> fields = getMarketo().describeLeads().stream().map(
+        leadAttribute -> {
+          if (leadAttribute.getRest() != null) {
+            return Schema.Field.of(leadAttribute.getRest().getName(), Schema.nullableOf(Schema.of(Schema.Type.STRING)));
+          } else {
+            return null;
+          }
+        }
+      ).filter(Objects::nonNull).collect(Collectors.toList());
+
+      schema = Schema.recordOf("LeadsRecord", fields);
     }
     return schema;
   }
@@ -108,9 +120,6 @@ public class MarketoBatchSourceConfig extends ReferencePluginConfig {
     return marketo;
   }
 
-  public MarketoEntity getEntityType() {
-    return MarketoEntity.fromString(entityName);
-  }
 
   public String getClientId() {
     return clientId;

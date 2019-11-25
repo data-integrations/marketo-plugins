@@ -1,0 +1,28 @@
+{
+  "metadata": {
+    "spec-version": "1.0"
+  },
+  "display-name": "Marketo Reporting",
+  "configuration-groups": [
+    {
+      "label": "General",
+      "properties": [
+        {
+          "widget-type": "textbox",
+          "label": "Reference Name",
+          "name": "referenceName"
+        }
+      ]
+    },
+    {
+      "label": "Advanced",
+      "properties": [ ]
+    }
+  ],
+  "outputs": [
+    {
+      "widget-type": "non-editable-schema-editor",
+      "schema": { }
+    }
+  ]
+}

@@ -39,14 +39,14 @@ import java.util.stream.Collectors;
  * Plugin that reads entities from Marketo api.
  */
 @Plugin(type = BatchSource.PLUGIN_TYPE)
-@Name(MarketoBatchSource.NAME)
+@Name(MarketoReportingPlugin.NAME)
 @Description("Reads entities from Marketo.")
-public class MarketoBatchSource extends BatchSource<NullWritable, Map<String, Object>, StructuredRecord> {
-  public static final String NAME = "MarketoEntityPlugin";
+public class MarketoReportingPlugin extends BatchSource<NullWritable, Map<String, String>, StructuredRecord> {
+  public static final String NAME = "MarketoReportingPlugin";
 
-  private final MarketoBatchSourceConfig config;
+  private final MarketoReportingSourceConfig config;
 
-  public MarketoBatchSource(MarketoBatchSourceConfig config) {
+  public MarketoReportingPlugin(MarketoReportingSourceConfig config) {
     this.config = config;
 
   }
@@ -71,17 +71,17 @@ public class MarketoBatchSource extends BatchSource<NullWritable, Map<String, Ob
   }
 
   @Override
-  public void transform(KeyValue<NullWritable, Map<String, Object>> input, Emitter<StructuredRecord> emitter) {
+  public void transform(KeyValue<NullWritable, Map<String, String>> input, Emitter<StructuredRecord> emitter) {
     StructuredRecord.Builder builder = StructuredRecord.builder(config.getSchema());
-    Map<String, Object> inputMap = input.getValue();
+    Map<String, String> inputMap = input.getValue();
     config.getSchema().getFields().forEach(
       field -> {
         if (inputMap.containsKey(field.getName())) {
-          //TODO map fields, also refactor io.cdap.plugin.marketo.common.MarketoSchemaReader.getSchemaForEntity
           builder.set(field.getName(), String.valueOf(inputMap.remove(field.getName())));
         }
       }
     );
+    emitter.emit(builder.build());
   }
 
   private void validateConfiguration(FailureCollector failureCollector) {

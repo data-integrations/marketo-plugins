@@ -28,12 +28,12 @@ import java.util.Map;
  * InputFormatProvider used by cdap to provide configurations to mapreduce job
  */
 public class MarketoInputFormatProvider implements InputFormatProvider {
-  public static final String PROPERTY_CONFIG_JSON = "cdap.marketo.entity.config";
+  public static final String PROPERTY_CONFIG_JSON = "cdap.marketo.reporter.config";
   private static final Gson gson = new GsonBuilder().create();
   private final Map<String, String> conf;
 
 
-  MarketoInputFormatProvider(MarketoBatchSourceConfig config) {
+  MarketoInputFormatProvider(MarketoReportingSourceConfig config) {
     this.conf = Collections.unmodifiableMap(new HashMap<String, String>() {{
       put(PROPERTY_CONFIG_JSON, gson.toJson(config));
     }});

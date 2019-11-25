@@ -14,12 +14,12 @@
  * the License.
  */
 
-package io.cdap.plugin.marketo.common;
+package io.cdap.plugin.marketo.common.api.entities;
 
 import com.google.gson.annotations.SerializedName;
 
 /**
- * Marketo Token holder.
+ * Represents marketo token response.
  */
 public class MarketoToken {
   @SerializedName("access_token")
