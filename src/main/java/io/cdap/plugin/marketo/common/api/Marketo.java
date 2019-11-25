@@ -17,19 +17,41 @@
 package io.cdap.plugin.marketo.common.api;
 
 import com.google.common.base.Strings;
-import com.google.gson.reflect.TypeToken;
+import com.google.common.collect.ImmutableMap;
+import com.google.gson.Gson;
 import io.cdap.plugin.marketo.common.api.entities.BaseResponse;
+import io.cdap.plugin.marketo.common.api.entities.Error;
 import io.cdap.plugin.marketo.common.api.entities.MarketoToken;
 import io.cdap.plugin.marketo.common.api.entities.leads.LeadsDescribe;
 import io.cdap.plugin.marketo.common.api.entities.leads.LeadsExport;
 import io.cdap.plugin.marketo.common.api.entities.leads.LeadsExportRequest;
+import org.apache.commons.io.IOUtils;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -37,85 +59,173 @@ import java.util.stream.StreamSupport;
  * Helper class to perform Marketo Api operations.
  */
 public class Marketo {
-
   private static final Logger LOG = LoggerFactory.getLogger(Marketo.class);
-  private static final TypeToken<LeadsDescribe> LEADS_DESCRIBE_TYPE_TOKEN = new TypeToken<LeadsDescribe>() {
-  };
+  static final Gson GSON = new Gson();
   private String marketoEndpoint;
+  private String clientId;
+  private String clientSecret;
   private MarketoToken token;
+  private HttpClientContext httpClientContext = HttpClientContext.create();
 
   public Marketo(String marketoEndpoint, String clientId, String clientSecret) {
     this.marketoEndpoint = marketoEndpoint;
-    token = getToken(marketoEndpoint, clientId, clientSecret);
-  }
-
-  public Marketo(String marketoEndpoint, MarketoToken token) {
-    this.marketoEndpoint = marketoEndpoint;
-    this.token = token;
+    this.clientId = clientId;
+    this.clientSecret = clientSecret;
+    token = refreshToken();
   }
 
   public List<LeadsDescribe.LeadAttribute> describeLeads() {
     return StreamSupport.stream(Spliterators.spliteratorUnknownSize(
-      iteratePage(Urls.LEADS_DESCRIBE, LEADS_DESCRIBE_TYPE_TOKEN, LeadsDescribe::getResult),
+      iteratePage(Urls.LEADS_DESCRIBE, LeadsDescribe.class, LeadsDescribe::getResult),
       Spliterator.ORDERED), false).collect(Collectors.toList());
   }
 
   public LeadsExportJob exportLeads(LeadsExportRequest request) {
-    LeadsExport export = post(Urls.BULK_EXPORT_LEADS_CREATE, request, LeadsExportRequest.class, LeadsExport.class);
+    LeadsExport export = validatedPost(Urls.BULK_EXPORT_LEADS_CREATE, Collections.emptyMap(),
+                                       inputStream -> Helpers.streamToObject(inputStream, LeadsExport.class),
+                                       request,
+                                       GSON::toJson);
     return new LeadsExportJob(export, this);
   }
 
-  <T extends BaseResponse> T getPage(String queryUrl, TypeToken<T> pageTypeToken) {
-    return get(queryUrl, pageTypeToken);
+  private <T extends BaseResponse> T getPage(String queryUrl, Class<T> pageClass) {
+    return validatedGet(queryUrl, Collections.emptyMap(),
+                        inputStream -> Helpers.streamToObject(inputStream, pageClass));
   }
 
-  <T extends BaseResponse> T getNextPage(T currentPage, String queryUrl, TypeToken<T> pageTypeToken) {
+  <T extends BaseResponse> T getNextPage(T currentPage, String queryUrl, Class<T> pageClass) {
     if (!Strings.isNullOrEmpty(currentPage.getNextPageToken())) {
-      return getPage(queryUrl + "&nextPageToken=" + currentPage.getNextPageToken(), pageTypeToken);
+      return validatedGet(queryUrl,
+                          ImmutableMap.of("nextPageToken", currentPage.getNextPageToken()),
+                          inputStream -> Helpers.streamToObject(inputStream, pageClass));
     }
     return null;
   }
 
-  <T extends BaseResponse, I> MarketoPageIterator<T, I> iteratePage(String queryUrl,
-                                                                    TypeToken<T> pageTypeToken,
-                                                                    Function<T, List<I>> resultsGetter) {
-    return new MarketoPageIterator<>(getPage(queryUrl, pageTypeToken), this, queryUrl, pageTypeToken, resultsGetter);
+  private <T extends BaseResponse, I> MarketoPageIterator<T, I> iteratePage(String queryUrl,
+                                                                            Class<T> pageClass,
+                                                                            Function<T, List<I>> resultsGetter) {
+    return new MarketoPageIterator<>(getPage(queryUrl, pageClass), this, queryUrl, pageClass, resultsGetter);
   }
 
-  <T extends BaseResponse> T get(String queryUrl, TypeToken<T> pageTypeToken) {
-    return HttpHelper.doGet(appendToken(marketoEndpoint + queryUrl), pageTypeToken);
+  <T extends BaseResponse, R> T post(String queryUrl, R body, Class<T> responseCls) {
+    return validatedPost(queryUrl, Collections.emptyMap(),
+                         inputStream -> Helpers.streamToObject(inputStream, responseCls),
+                         body, GSON::toJson);
   }
 
-  <T extends BaseResponse> T get(String queryUrl, Class<T> cls) {
-    return HttpHelper.doGet(appendToken(marketoEndpoint + queryUrl), cls);
+  <T extends BaseResponse> T validatedGet(String queryUrl, Map<String, String> parameters,
+                                          Function<InputStream, T> deserializer) {
+    String logUri = "GET " + buildUri(queryUrl, parameters, false).toString();
+    return retryableValidate(logUri, () -> {
+      URI queryUri = buildUri(queryUrl, parameters, true);
+      return get(queryUri, deserializer);
+    });
   }
 
-  <T extends BaseResponse, R> T post(String queryUrl, R body, Class<R> requestCls, Class<T> responseCls) {
-    return HttpHelper.doPost(appendToken(marketoEndpoint + queryUrl), body, requestCls, responseCls);
+  private <T extends BaseResponse, B> T validatedPost(String queryUrl, Map<String, String> parameters,
+                                                      Function<InputStream, T> deserializer,
+                                                      B body, Function<B, String> qSerializer) {
+    String logUri = "POST " + buildUri(queryUrl, parameters, false).toString();
+    return retryableValidate(logUri, () -> {
+      URI queryUri = buildUri(queryUrl, parameters, true);
+      return post(queryUri, deserializer, body, qSerializer);
+    });
   }
 
-  String get(String queryUrl) {
-    return HttpHelper.doGet(queryUrl);
-  }
-
-  public static MarketoToken getToken(String marketoEndpoint, String clientId, String clientSecret) {
-    LOG.info("Requesting marketo token");
-    String marketoIdURL = marketoEndpoint + "/identity";
-    String idEndpoint = marketoIdURL + "/oauth/token?grant_type=client_credentials&client_id="
-      + clientId + "&client_secret=" + clientSecret;
-
-    return HttpHelper.doGet(idEndpoint, MarketoToken.class);
-  }
-
-  private String appendToken(String requestUrl) {
-    if (!requestUrl.contains("access_token")) {
-      if (requestUrl.contains("?")) {
-        return requestUrl + "&access_token=" + token.getAccessToken();
-      } else {
-        return requestUrl + "?access_token=" + token.getAccessToken();
+  private <T extends BaseResponse> T retryableValidate(String logUri, Supplier<T> tryQuery) {
+    T result = tryQuery.get();
+    // check for expired token
+    if (!result.isSuccess()) {
+      for (Error error : result.getErrors()) {
+        if (error.getCode() == 602 && error.getMessage().equals("Access token expired")) {
+          // refresh token and retry
+          token = refreshToken();
+          LOG.info("Refreshed token");
+          return tryQuery.get();
+        }
       }
     }
-    return requestUrl;
+
+    // log warnings if required
+    if (result.getWarnings().size() > 0) {
+      String warnings = result.getWarnings().stream()
+        .map(error -> String.format("code: %s, message: %s", error.getCode(), error.getMessage()))
+        .collect(Collectors.joining("; "));
+      LOG.warn("Warnings when calling '{}' - {}", logUri, warnings);
+    }
+
+    if (!result.isSuccess()) {
+      String msg = String.format("Errors when calling '%s'", logUri);
+      // log errors if required
+      if (result.getErrors().size() > 0) {
+        String errors = result.getErrors().stream()
+          .map(error -> String.format("code: %s, message: %s", error.getCode(), error.getMessage()))
+          .collect(Collectors.joining("; "));
+        msg = msg + " - " + errors;
+        LOG.error(msg);
+      }
+      throw new RuntimeException(msg);
+    }
+    return result;
   }
 
+  <T> T get(URI uri, Function<InputStream, T> deserializer) {
+    try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+      HttpGet request = new HttpGet(uri);
+      try (CloseableHttpResponse response = httpClient.execute(request, httpClientContext)) {
+        if(response.getStatusLine().getStatusCode() >= 300) {
+          throw new IOException(IOUtils.toString(response.getEntity().getContent(), StandardCharsets.UTF_8));
+        }
+        return deserializer.apply(response.getEntity().getContent());
+      }
+    } catch (Exception e) {
+      throw Helpers.failForUri("GET", uri, e);
+    }
+  }
+
+  private <T, B> T post(URI uri, Function<InputStream, T> respDeserializer, B body, Function<B, String> qSerializer) {
+    try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+      HttpPost request = new HttpPost(uri);
+      if (body != null) {
+        Objects.requireNonNull(qSerializer, "body serializer must be specified with body");
+        request.setEntity(new StringEntity(qSerializer.apply(body), ContentType.APPLICATION_JSON));
+      }
+      try (CloseableHttpResponse response = httpClient.execute(request, httpClientContext)) {
+        return respDeserializer.apply(response.getEntity().getContent());
+      }
+    } catch (Exception e) {
+      throw Helpers.failForUri("POST", uri, e);
+    }
+  }
+
+
+  URI buildUri(String queryUrl, Map<String, String> parameters) {
+    return buildUri(queryUrl, parameters, true);
+  }
+
+  URI buildUri(String queryUrl, Map<String, String> parameters, boolean includeToken) {
+    try {
+      URIBuilder builder = new URIBuilder(marketoEndpoint + queryUrl);
+      parameters.forEach(builder::setParameter);
+      if (includeToken) {
+        builder.setParameter("access_token", token.getAccessToken());
+      }
+      return builder.build();
+    } catch (URISyntaxException e) {
+      throw new IllegalArgumentException(String.format("'%s' is invalid URI", marketoEndpoint + queryUrl));
+    }
+  }
+
+  MarketoToken getCurrentToken() {
+    return this.token;
+  }
+
+  private MarketoToken refreshToken() {
+    LOG.debug("Requesting marketo token");
+    URI getTokenUri = buildUri("/identity/oauth/token",
+                               ImmutableMap.of("grant_type", "client_credentials", "client_id", clientId,
+                                               "client_secret", clientSecret), false);
+    return get(getTokenUri, inputStream -> GSON.fromJson(new InputStreamReader(inputStream), MarketoToken.class));
+  }
 }

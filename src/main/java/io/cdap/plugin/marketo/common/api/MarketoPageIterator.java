@@ -1,6 +1,5 @@
 package io.cdap.plugin.marketo.common.api;
 
-import com.google.gson.reflect.TypeToken;
 import io.cdap.plugin.marketo.common.api.entities.BaseResponse;
 
 import java.util.Iterator;
@@ -18,16 +17,16 @@ public class MarketoPageIterator<T extends BaseResponse, I> implements Iterator<
   private T currentPage;
   private Marketo marketo;
   private String queryUrl;
-  private TypeToken<T> pageTypeToken;
+  private Class<T> pageClass;
   private Function<T, List<I>> resultsGetter;
   private Iterator<I> currentPageResultIterator;
 
-  MarketoPageIterator(T page, Marketo marketo, String queryUrl, TypeToken<T> pageTypeToken,
+  MarketoPageIterator(T page, Marketo marketo, String queryUrl, Class<T> pageClass,
                       Function<T, List<I>> resultsGetter) {
     this.currentPage = page;
     this.marketo = marketo;
     this.queryUrl = queryUrl;
-    this.pageTypeToken = pageTypeToken;
+    this.pageClass = pageClass;
     this.resultsGetter = resultsGetter;
     currentPageResultIterator = resultsGetter.apply(this.currentPage).iterator();
   }
@@ -37,7 +36,7 @@ public class MarketoPageIterator<T extends BaseResponse, I> implements Iterator<
     if (currentPageResultIterator.hasNext()) {
       return true;
     } else {
-      T nextPage = marketo.getNextPage(currentPage, queryUrl, pageTypeToken);
+      T nextPage = marketo.getNextPage(currentPage, queryUrl, pageClass);
       if (nextPage != null) {
         currentPage = nextPage;
         currentPageResultIterator = resultsGetter.apply(this.currentPage).iterator();

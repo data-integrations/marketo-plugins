@@ -7,6 +7,14 @@ public class Warning {
   private int code;
   private String message;
 
+  public Warning(int code, String message) {
+    this.code = code;
+    this.message = message;
+  }
+
+  public Warning() {
+  }
+
   public int getCode() {
     return code;
   }

@@ -115,7 +115,7 @@ public class MarketoReportingSourceConfig extends ReferencePluginConfig {
 
   public Marketo getMarketo() {
     if (marketo == null) {
-      marketo = new Marketo(getRestApiEndpoint(), getMarketoToken());
+      marketo = new Marketo(getRestApiEndpoint(), getClientId(), getClientSecret());
     }
     return marketo;
   }
@@ -151,12 +151,5 @@ public class MarketoReportingSourceConfig extends ReferencePluginConfig {
 
   public String getEndDate() {
     return endDate;
-  }
-
-  public MarketoToken getMarketoToken() {
-    if (token == null) {
-      token = Marketo.getToken(getRestApiEndpoint(), getClientId(), getClientSecret());
-    }
-    return token;
   }
 }

@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -12,9 +13,9 @@ import java.util.List;
  */
 public class LeadsExportJob {
   private static final Logger LOG = LoggerFactory.getLogger(LeadsExportJob.class);
-
   private static final List<String> WAITABLE_STATE = Arrays.asList("Queued", "Processing");
   private static final List<String> COMPLETED_STATUS = Arrays.asList("Canceled", "Completed", "Failed");
+
   private String jobId;
   private LeadsExport.ExportResponse last;
   private Marketo marketo;
@@ -36,13 +37,15 @@ public class LeadsExportJob {
     }
 
     while (!COMPLETED_STATUS.contains(getStatus())) {
-      LeadsExport currentResp = marketo.get(String.format(Urls.BULK_EXPORT_LEADS_STATUS, jobId), LeadsExport.class);
+      LeadsExport currentResp = marketo.validatedGet(
+        String.format(Urls.BULK_EXPORT_LEADS_STATUS, jobId),
+        Collections.emptyMap(), inputStream -> Helpers.streamToObject(inputStream, LeadsExport.class));
       LeadsExport.ExportResponse current = currentResp.singleExport();
       String previousStatus = getStatus();
       String currentStatus = current.getStatus();
       if (!currentStatus.equals(previousStatus)) {
         LOG.info("Bulk lead export job with id '{}' changed status from '{}' to '{}'", jobId, previousStatus,
-                         currentStatus);
+                 currentStatus);
       }
       last = current;
       Thread.sleep(30 * 1000);
@@ -52,12 +55,13 @@ public class LeadsExportJob {
 
   public void enqueue() {
     last = marketo.post(String.format(Urls.BULK_EXPORT_LEADS_ENQUEUE, jobId),
-                        null, null, LeadsExport.class).singleExport();
+                        null, LeadsExport.class).singleExport();
 
     LOG.info("Bulk lead export job with id '{}' enqueued", jobId);
   }
 
   public String getFile() {
-    return marketo.get(String.format(Urls.BULK_EXPORT_LEADS_FILE, jobId));
+    return marketo.get(marketo.buildUri(String.format(Urls.BULK_EXPORT_LEADS_FILE, jobId), Collections.emptyMap()),
+                       Helpers::streamToString);
   }
 }
