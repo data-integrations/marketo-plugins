@@ -17,9 +17,13 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
-public class MarketoTest {
-  private static Gson GSON = new Gson();
+public class MarketoHttpTest {
+  private static final Gson GSON = new Gson();
 
   @Rule
   public WireMockRule wireMockRule = new WireMockRule(
@@ -32,6 +36,67 @@ public class MarketoTest {
       setErrors(errors);
       setWarnings(warnings);
     }
+  }
+
+  public static class PageResponse extends BaseResponse {
+    private List<String> results;
+
+    PageResponse(boolean moreResults, String nextPageToken, String... items) {
+      setSuccess(true);
+      setMoreResult(moreResults);
+      results = Arrays.asList(items);
+      setNextPageToken(nextPageToken);
+    }
+
+    public List<String> getResults() {
+      return results;
+    }
+  }
+
+  @Test
+  public void testPaging() {
+    setupToken();
+
+    WireMock.stubFor(
+      WireMock.get(WireMock.urlPathMatching("/rest/v1/paged.json")).inScenario("page")
+        .whenScenarioStateIs(Scenario.STARTED)
+        .willReturn(
+          WireMock.aResponse().withBody(
+            GSON.toJson(new PageResponse(true, "page1", "1", "2", "3"))
+          )
+        )
+        .willSetStateTo("page1")
+    );
+    WireMock.stubFor(
+      WireMock.get(WireMock.urlPathMatching("/rest/v1/paged.json")).inScenario("page")
+        .whenScenarioStateIs("page1")
+        .withQueryParam("nextPageToken", WireMock.equalTo("page1"))
+        .willReturn(
+          WireMock.aResponse().withBody(
+            GSON.toJson(new PageResponse(true, "page2", "4", "5", "6"))
+          )
+        )
+        .willSetStateTo("page2")
+    );
+    WireMock.stubFor(
+      WireMock.get(WireMock.urlPathMatching("/rest/v1/paged.json")).inScenario("page")
+        .whenScenarioStateIs("page2")
+        .withQueryParam("nextPageToken", WireMock.equalTo("page2"))
+        .willReturn(
+          WireMock.aResponse().withBody(
+            GSON.toJson(new PageResponse(false, null, "7", "8", "9"))
+          )
+        )
+        .willSetStateTo("page3")
+    );
+
+    MarketoHttp m = new MarketoHttp(getApiUrl(), "clientNiceId", "clientNiceSecret");
+
+    List<String> results = StreamSupport.stream(Spliterators.spliteratorUnknownSize(
+      m.iteratePage("/rest/v1/paged.json", PageResponse.class, PageResponse::getResults),
+      Spliterator.ORDERED), false).sorted().collect(Collectors.toList());
+
+    Assert.assertArrayEquals(new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9"}, results.toArray());
   }
 
   @Test
@@ -49,7 +114,7 @@ public class MarketoTest {
         )
     );
 
-    Marketo m = new Marketo(getApiUrl(), "clientNiceId", "clientNiceSecret");
+    MarketoHttp m = new MarketoHttp(getApiUrl(), "clientNiceId", "clientNiceSecret");
     Assert.assertEquals("niceToken", m.getCurrentToken().getAccessToken());
   }
 
@@ -79,13 +144,36 @@ public class MarketoTest {
           )
         )
     );
-    Marketo m = new Marketo(getApiUrl(), "clientNiceId", "clientNiceSecret");
+    MarketoHttp m = new MarketoHttp(getApiUrl(), "clientNiceId", "clientNiceSecret");
     m.validatedGet("/rest/v1/stub.json", Collections.emptyMap(),
                    inputStream -> Helpers.streamToObject(inputStream, StubResponse.class));
     WireMock.verify(WireMock.exactly(2),
                     WireMock.getRequestedFor(WireMock.urlPathEqualTo("/identity/oauth/token")));
     WireMock.verify(WireMock.exactly(2),
                     WireMock.getRequestedFor(WireMock.urlPathEqualTo("/rest/v1/stub.json")));
+  }
+
+  @Test
+  public void testPost() {
+    setupToken();
+
+    WireMock.stubFor(
+      WireMock.post(WireMock.urlPathMatching("/rest/v1/post.json"))
+        .willReturn(
+          WireMock.aResponse().withBody(
+            GSON.toJson(new StubResponse(true, Collections.emptyList(), Collections.emptyList()))
+          )
+        )
+    );
+
+    MarketoHttp m = new MarketoHttp(getApiUrl(), "clientNiceId", "clientNiceSecret");
+    m.validatedPost("/rest/v1/post.json", Collections.emptyMap(),
+                    inputStream -> Helpers.streamToObject(inputStream, StubResponse.class), "body", String::toString);
+
+    WireMock.verify(
+      WireMock.postRequestedFor(WireMock.urlPathEqualTo("/rest/v1/post.json"))
+        .withRequestBody(WireMock.equalTo("body"))
+    );
   }
 
   @Test
@@ -113,7 +201,7 @@ public class MarketoTest {
         )
     );
 
-    Marketo m = new Marketo(getApiUrl(), "clientNiceId", "clientNiceSecret");
+    MarketoHttp m = new MarketoHttp(getApiUrl(), "clientNiceId", "clientNiceSecret");
     m.validatedGet("/rest/v1/justWarnings.json", Collections.emptyMap(),
                    inputStream -> Helpers.streamToObject(inputStream, StubResponse.class));
 
@@ -130,7 +218,7 @@ public class MarketoTest {
   @Test
   public void testBuildUri() {
     setupToken();
-    Marketo m = new Marketo(getApiUrl(), "clientNiceId", "clientNiceSecret");
+    MarketoHttp m = new MarketoHttp(getApiUrl(), "clientNiceId", "clientNiceSecret");
     String uriWithToken = m.buildUri("/hello", Collections.emptyMap()).toString();
     Assert.assertTrue(uriWithToken.contains("access_token"));
     String uriWithoutToken = m.buildUri("/hello", ImmutableMap.of("param", "value"), false).toString();
@@ -150,7 +238,7 @@ public class MarketoTest {
     );
 
     try {
-      Marketo m = new Marketo(getApiUrl(), "clientNiceId", "clientNiceSecret");
+      MarketoHttp m = new MarketoHttp(getApiUrl(), "clientNiceId", "clientNiceSecret");
       m.validatedGet("/rest/v1/fail.json", Collections.emptyMap(),
                      inputStream -> Helpers.streamToObject(inputStream, StubResponse.class));
       Assert.fail("This call expected to fail.");
@@ -162,7 +250,7 @@ public class MarketoTest {
   @Test
   public void invalidEndpoint() {
     try {
-      new Marketo("%^%^&%^", "clientNiceId", "clientNiceSecret");
+      new MarketoHttp("%^%^&%^", "clientNiceId", "clientNiceSecret");
       Assert.fail("This call expected to fail.");
     } catch (IllegalArgumentException ex) {
       Assert.assertEquals("'%^%^&%^/identity/oauth/token' is invalid URI", ex.getMessage());

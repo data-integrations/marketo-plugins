@@ -15,13 +15,13 @@ import java.util.function.Function;
  */
 public class MarketoPageIterator<T extends BaseResponse, I> implements Iterator<I> {
   private T currentPage;
-  private Marketo marketo;
+  private MarketoHttp marketo;
   private String queryUrl;
   private Class<T> pageClass;
   private Function<T, List<I>> resultsGetter;
   private Iterator<I> currentPageResultIterator;
 
-  MarketoPageIterator(T page, Marketo marketo, String queryUrl, Class<T> pageClass,
+  MarketoPageIterator(T page, MarketoHttp marketo, String queryUrl, Class<T> pageClass,
                       Function<T, List<I>> resultsGetter) {
     this.currentPage = page;
     this.marketo = marketo;

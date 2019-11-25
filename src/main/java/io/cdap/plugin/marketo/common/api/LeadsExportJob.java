@@ -54,8 +54,9 @@ public class LeadsExportJob {
   }
 
   public void enqueue() {
-    last = marketo.post(String.format(Urls.BULK_EXPORT_LEADS_ENQUEUE, jobId),
-                        null, LeadsExport.class).singleExport();
+    last = marketo.validatedPost(String.format(Urls.BULK_EXPORT_LEADS_ENQUEUE, jobId), Collections.emptyMap(),
+                                 inputStream -> Helpers.streamToObject(inputStream, LeadsExport.class),
+                                 null, null).singleExport();
 
     LOG.info("Bulk lead export job with id '{}' enqueued", jobId);
   }

@@ -13,6 +13,9 @@ import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+/**
+ * Various helper methods.
+ */
 public class Helpers {
   public static String streamToString(InputStream inputStream) {
     try {
