@@ -21,6 +21,7 @@ import com.google.gson.GsonBuilder;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.plugin.marketo.common.api.LeadsExportJob;
 import io.cdap.plugin.marketo.common.api.Marketo;
+import io.cdap.plugin.marketo.common.api.entities.DateRange;
 import io.cdap.plugin.marketo.common.api.entities.leads.LeadsExportRequest;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -48,6 +49,13 @@ public class MarketoRecordReader extends RecordReader<NullWritable, Map<String, 
   private static final Gson GSON = new GsonBuilder().create();
   private Map<String, String> current = null;
   private Iterator<CSVRecord> iterator = null;
+  private String beginDate;
+  private String endDate;
+
+  public MarketoRecordReader(String beginDate, String endDate) {
+    this.beginDate = beginDate;
+    this.endDate = endDate;
+  }
 
   @Override
   public void initialize(InputSplit inputSplit, TaskAttemptContext taskAttemptContext) throws IOException {
@@ -59,12 +67,18 @@ public class MarketoRecordReader extends RecordReader<NullWritable, Map<String, 
 
     List<String> fields = config.getSchema().getFields().stream()
       .map(Schema.Field::getName).collect(Collectors.toList());
+    DateRange dateRange = new DateRange(beginDate, endDate);
     LeadsExportRequest.ExportLeadFilter filter = LeadsExportRequest.ExportLeadFilter.builder()
-      .createdAt(new LeadsExportRequest.DateRange(config.getStartDate(), config.getEndDate())).build();
+      .createdAt(dateRange).build();
     LeadsExportRequest request = new LeadsExportRequest(fields, filter);
 
     LeadsExportJob job = marketo.exportLeads(request);
-    job.enqueue();
+    LOG.info("Bulk leads export job with id '{}' has date range {}", job.getJobId(), dateRange);
+
+    // TODO handle possible concurrent issues here, another mapper can take our slot
+    // wait for 10 minutes for available slot and enqueue job
+    marketo.onBulkExtractQueueAvailable(job::enqueue, 60 * 10);
+
     try {
       job.waitCompletion();
     } catch (InterruptedException ex) {
@@ -72,10 +86,9 @@ public class MarketoRecordReader extends RecordReader<NullWritable, Map<String, 
     }
 
     String data = job.getFile();
-    LOG.info(data);
+    // TODO stream here
     CSVParser parser = CSVFormat.DEFAULT.withHeader().parse(new StringReader(data));
     iterator = parser.iterator();
-//    iterator = config.getMarketo().iteratePage(config.getEntityType().getGetEndpoint());
   }
 
   @Override

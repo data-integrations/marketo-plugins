@@ -16,6 +16,7 @@
 
 package io.cdap.plugin.marketo.common.api;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
 import io.cdap.plugin.marketo.common.api.entities.leads.LeadsDescribe;
 import io.cdap.plugin.marketo.common.api.entities.leads.LeadsExport;
@@ -27,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Spliterator;
 import java.util.Spliterators;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -52,7 +54,48 @@ public class Marketo extends MarketoHttp {
                                        inputStream -> Helpers.streamToObject(inputStream, LeadsExport.class),
                                        request,
                                        GSON::toJson);
-    return new LeadsExportJob(export, this);
+    return new LeadsExportJob(export.singleExport(), this);
   }
 
+  public LeadsExport.ExportResponse leadsExportJobStatus(String jobId) {
+    LeadsExport currentResp = validatedGet(
+      String.format(Urls.BULK_EXPORT_LEADS_STATUS, jobId),
+      Collections.emptyMap(), inputStream -> Helpers.streamToObject(inputStream, LeadsExport.class));
+    return currentResp.singleExport();
+  }
+
+  /**
+   * Waits until bulk extract queue has available slot and executes given action.
+   *
+   * @param action  action to execute once slot is available
+   * @param timeoutSeconds timeout, in seconds
+   */
+  public void onBulkExtractQueueAvailable(Runnable action, long timeoutSeconds) {
+    long timeoutMillis = TimeUnit.SECONDS.toMillis(timeoutSeconds);
+    long startTime = System.currentTimeMillis();
+    while (System.currentTimeMillis() - startTime < timeoutMillis) {
+      if (canEnqueueJob()) {
+        action.run();
+        return;
+      } else {
+        try {
+          Thread.sleep(TimeUnit.SECONDS.toMillis(60));
+        } catch (InterruptedException e) {
+          throw new RuntimeException("Failed to get slot in bulk export queue - interrupted");
+        }
+      }
+    }
+    throw new RuntimeException("Failed to get slot in bulk export queue - timeout");
+  }
+
+  private boolean canEnqueueJob() {
+    LeadsExport exportJobs = validatedGet(Urls.BULK_EXPORT_LEADS_LIST,
+                                          ImmutableMap.of("status", "queued,processing"),
+                                          inputStream -> Helpers.streamToObject(inputStream, LeadsExport.class)
+    );
+    int jobsInQueue = exportJobs.getResult().size();
+    LOG.debug("Jobs in queue: {}", jobsInQueue);
+    // TODO handle activity queue here
+    return jobsInQueue < 10;
+  }
 }

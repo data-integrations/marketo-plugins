@@ -16,26 +16,38 @@
 
 package io.cdap.plugin.marketo.source.batch;
 
+import com.google.gson.Gson;
+import io.cdap.plugin.marketo.common.api.Helpers;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
-import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * InputFormat for mapreduce job, which provides a single split of data.
  */
 public class MarketoInputFormat extends InputFormat {
+  private static final Gson GSON = new Gson();
+
   @Override
   public List<InputSplit> getSplits(JobContext jobContext) {
-    return Collections.singletonList(new NoOpMarketoSplit());
+    Configuration conf = jobContext.getConfiguration();
+    MarketoReportingSourceConfig config = GSON.fromJson(
+      conf.get(MarketoInputFormatProvider.PROPERTY_CONFIG_JSON), MarketoReportingSourceConfig.class);
+
+    return Helpers.getDateRanges(config.getStartDate(), config.getEndDate()).stream()
+      .map(dateRange -> new MarketoReportingSplit(dateRange.getStartAt(), dateRange.getEndAt()))
+      .collect(Collectors.toList());
   }
 
   @Override
   public RecordReader createRecordReader(InputSplit inputSplit, TaskAttemptContext taskAttemptContext) {
-    return new MarketoRecordReader();
+    MarketoReportingSplit split = (MarketoReportingSplit) inputSplit;
+    return new MarketoRecordReader(split.getBeginDate(), split.getEndDate());
   }
 }

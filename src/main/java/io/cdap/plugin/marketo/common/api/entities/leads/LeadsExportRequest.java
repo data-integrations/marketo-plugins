@@ -1,5 +1,7 @@
 package io.cdap.plugin.marketo.common.api.entities.leads;
 
+import io.cdap.plugin.marketo.common.api.entities.DateRange;
+
 import java.util.List;
 import java.util.Map;
 
@@ -7,19 +9,6 @@ import java.util.Map;
  * Represents leads bulk export request.
  */
 public class LeadsExportRequest {
-  /**
-   * Represents date range.
-   */
-  public static class DateRange {
-    String endAt = null;
-    String startAt = null;
-
-    public DateRange(String startAt, String endAt) {
-      this.endAt = endAt;
-      this.startAt = startAt;
-    }
-  }
-
   /**
    * Represents request filter.
    */

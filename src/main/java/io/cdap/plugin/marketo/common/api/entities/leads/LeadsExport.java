@@ -79,4 +79,8 @@ public class LeadsExport extends BaseResponse {
     return result.get(0);
   }
 
+  public List<ExportResponse> getResult() {
+    return result;
+  }
+
 }

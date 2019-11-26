@@ -7,62 +7,82 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Leads export job.
  */
 public class LeadsExportJob {
   private static final Logger LOG = LoggerFactory.getLogger(LeadsExportJob.class);
-  private static final List<String> WAITABLE_STATE = Arrays.asList("Queued", "Processing");
-  private static final List<String> COMPLETED_STATUS = Arrays.asList("Canceled", "Completed", "Failed");
+  private static final List<String> WAIT_ABLE_STATE = Arrays.asList("Queued", "Processing");
+  private static final String ENQUEUE_ABLE_STATUS = "Created";
+  private static final String COMPLETED_STATUS = "Completed";
 
   private String jobId;
-  private LeadsExport.ExportResponse last;
+  private LeadsExport.ExportResponse lastStatus;
   private Marketo marketo;
 
-  public LeadsExportJob(LeadsExport lastStatus, Marketo marketo) {
-    this.jobId = lastStatus.singleExport().getExportId();
-    this.last = lastStatus.singleExport();
+  public LeadsExportJob(LeadsExport.ExportResponse lastStatus, Marketo marketo) {
+    this.jobId = lastStatus.getExportId();
+    this.lastStatus = lastStatus;
     this.marketo = marketo;
-    LOG.info("Created bulk lead export job with id '{}'", this.jobId);
+    LOG.info("BULK LEADS EXPORT - created job '{}'", this.jobId);
   }
 
-  public String getStatus() {
-    return last.getStatus();
+  public String getLastStatus() {
+    return lastStatus.getStatus();
   }
 
   public void waitCompletion() throws InterruptedException {
-    if (!WAITABLE_STATE.contains(getStatus())) {
+    if (!WAIT_ABLE_STATE.contains(getLastStatus())) {
       throw new IllegalStateException("Job must be enqueued before waiting for completion.");
     }
 
-    while (!COMPLETED_STATUS.contains(getStatus())) {
-      LeadsExport currentResp = marketo.validatedGet(
-        String.format(Urls.BULK_EXPORT_LEADS_STATUS, jobId),
-        Collections.emptyMap(), inputStream -> Helpers.streamToObject(inputStream, LeadsExport.class));
-      LeadsExport.ExportResponse current = currentResp.singleExport();
-      String previousStatus = getStatus();
-      String currentStatus = current.getStatus();
-      if (!currentStatus.equals(previousStatus)) {
-        LOG.info("Bulk lead export job with id '{}' changed status from '{}' to '{}'", jobId, previousStatus,
-                 currentStatus);
-      }
-      last = current;
-      Thread.sleep(30 * 1000);
+    do {
+      Thread.sleep(TimeUnit.SECONDS.toMillis(30));
+      LeadsExport.ExportResponse newState = marketo.leadsExportJobStatus(jobId);
+      logStatusChange(getLastStatus(), newState.getStatus());
+      lastStatus = newState;
+    } while (WAIT_ABLE_STATE.contains(getLastStatus()));
+
+    if (!getLastStatus().equals(COMPLETED_STATUS)) {
+      throw new IllegalStateException("Job expected to be in Completed state, but was in " + getLastStatus());
     }
-    LOG.info("Bulk lead export job with id '{}' finished with status '{}'", jobId, getStatus());
   }
 
   public void enqueue() {
-    last = marketo.validatedPost(String.format(Urls.BULK_EXPORT_LEADS_ENQUEUE, jobId), Collections.emptyMap(),
-                                 inputStream -> Helpers.streamToObject(inputStream, LeadsExport.class),
-                                 null, null).singleExport();
+    if (!getLastStatus().equals(ENQUEUE_ABLE_STATUS)) {
+      throw new IllegalStateException("Job must be in Created status before enqueuing, but was in " + getLastStatus());
+    }
 
-    LOG.info("Bulk lead export job with id '{}' enqueued", jobId);
+    LeadsExport.ExportResponse newState = marketo.validatedPost(
+      String.format(Urls.BULK_EXPORT_LEADS_ENQUEUE, jobId),
+      Collections.emptyMap(),
+      inputStream -> Helpers.streamToObject(inputStream, LeadsExport.class),
+      null, null).singleExport();
+
+    logStatusChange(getLastStatus(), newState.getStatus());
+
+    if (!(newState.getStatus().equals("Queued") || newState.getStatus().equals("Processing"))) {
+      throw new IllegalStateException(
+        String.format("Expected Queued|Processing state for job '%s' but got '%s'", jobId, newState.getStatus()));
+    }
+
+    lastStatus = newState;
+  }
+
+  private void logStatusChange(String oldStatus, String newStatus) {
+    if (!oldStatus.equals(newStatus)) {
+      LOG.info("BULK LEADS EXPORT - job '{}' changed state '{}' -> '{}'", jobId, oldStatus, newStatus);
+    }
   }
 
   public String getFile() {
     return marketo.get(marketo.buildUri(String.format(Urls.BULK_EXPORT_LEADS_FILE, jobId), Collections.emptyMap()),
                        Helpers::streamToString);
+  }
+
+  public String getJobId() {
+    return jobId;
   }
 }
