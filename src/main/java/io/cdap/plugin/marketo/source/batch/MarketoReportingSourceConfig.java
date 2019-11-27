@@ -24,10 +24,6 @@ import io.cdap.plugin.common.ReferencePluginConfig;
 import io.cdap.plugin.marketo.common.api.Marketo;
 import io.cdap.plugin.marketo.common.api.entities.MarketoToken;
 
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
-
 /**
  * Provides all required configuration for reading Marketo entities.
  */
@@ -38,6 +34,7 @@ public class MarketoReportingSourceConfig extends ReferencePluginConfig {
   public static final String PROPERTY_REST_API_ENDPOINT = "restApiEndpoint";
   public static final String PROPERTY_REST_API_IDENTITY = "restApiIdentity";
   public static final String PROPERTY_DAILY_API_LIMIT = "dailyApiLimit";
+  public static final String PROPERTY_REPORT_TYPE = "reportType";
   public static final String PROPERTY_REPORT_FORMAT = "reportFormat";
   public static final String PROPERTY_START_DATE = "startDate";
   public static final String PROPERTY_END_DATE = "endDate";
@@ -72,6 +69,11 @@ public class MarketoReportingSourceConfig extends ReferencePluginConfig {
   @Macro
   protected String dailyApiLimit;
 
+  @Name(PROPERTY_REPORT_TYPE)
+  @Description("Report type format, leads or activities.")
+  @Macro
+  protected String reportType;
+
   @Name(PROPERTY_REPORT_FORMAT)
   @Description("Report format.")
   @Macro
@@ -98,17 +100,7 @@ public class MarketoReportingSourceConfig extends ReferencePluginConfig {
 
   public Schema getSchema() {
     if (schema == null) {
-      List<Schema.Field> fields = getMarketo().describeLeads().stream().map(
-        leadAttribute -> {
-          if (leadAttribute.getRest() != null) {
-            return Schema.Field.of(leadAttribute.getRest().getName(), Schema.nullableOf(Schema.of(Schema.Type.STRING)));
-          } else {
-            return null;
-          }
-        }
-      ).filter(Objects::nonNull).collect(Collectors.toList());
-
-      schema = Schema.recordOf("LeadsRecord", fields);
+      schema = MarketoReportingSchemaHelper.getSchema(this);
     }
     return schema;
   }
@@ -151,5 +143,9 @@ public class MarketoReportingSourceConfig extends ReferencePluginConfig {
 
   public String getEndDate() {
     return endDate;
+  }
+
+  public ReportType getReportType() {
+    return ReportType.fromString(reportType);
   }
 }

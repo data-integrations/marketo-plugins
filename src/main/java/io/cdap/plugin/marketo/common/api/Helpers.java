@@ -83,7 +83,7 @@ public class Helpers {
       while (currentStart.compareTo(end) < 0) {
         OffsetDateTime nextEnd = currentStart.plusDays(30);
         result.add(new DateRange(currentStart.toString(),
-                                                    min(nextEnd.minusSeconds(1), end).toString()));
+                                 min(nextEnd.minusSeconds(1), end).toString()));
         currentStart = nextEnd;
       }
 

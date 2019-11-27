@@ -72,16 +72,7 @@ public class MarketoReportingPlugin extends BatchSource<NullWritable, Map<String
 
   @Override
   public void transform(KeyValue<NullWritable, Map<String, String>> input, Emitter<StructuredRecord> emitter) {
-    StructuredRecord.Builder builder = StructuredRecord.builder(config.getSchema());
-    Map<String, String> inputMap = input.getValue();
-    config.getSchema().getFields().forEach(
-      field -> {
-        if (inputMap.containsKey(field.getName())) {
-          builder.set(field.getName(), String.valueOf(inputMap.remove(field.getName())));
-        }
-      }
-    );
-    emitter.emit(builder.build());
+    emitter.emit(MarketoReportingSchemaHelper.getRecord(config.getSchema(), input.getValue()));
   }
 
   private void validateConfiguration(FailureCollector failureCollector) {

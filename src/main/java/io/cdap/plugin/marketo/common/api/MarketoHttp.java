@@ -81,7 +81,7 @@ class MarketoHttp {
     });
   }
 
-  <T extends BaseResponse, B> T validatedPost(String queryUrl, Map<String, String> parameters,
+  public <T extends BaseResponse, B> T validatedPost(String queryUrl, Map<String, String> parameters,
                                               Function<InputStream, T> deserializer,
                                               B body, Function<B, String> qSerializer) {
     String logUri = "POST " + buildUri(queryUrl, parameters, false).toString();
@@ -128,7 +128,7 @@ class MarketoHttp {
     return result;
   }
 
-  <T> T get(URI uri, Function<InputStream, T> deserializer) {
+  public <T> T get(URI uri, Function<InputStream, T> deserializer) {
     try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
       HttpGet request = new HttpGet(uri);
       try (CloseableHttpResponse response = httpClient.execute(request, httpClientContext)) {
@@ -157,7 +157,7 @@ class MarketoHttp {
     }
   }
 
-  URI buildUri(String queryUrl, Map<String, String> parameters) {
+  public URI buildUri(String queryUrl, Map<String, String> parameters) {
     return buildUri(queryUrl, parameters, true);
   }
 

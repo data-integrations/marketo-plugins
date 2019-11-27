@@ -19,10 +19,12 @@ package io.cdap.plugin.marketo.source.batch;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.cdap.cdap.api.data.schema.Schema;
-import io.cdap.plugin.marketo.common.api.LeadsExportJob;
 import io.cdap.plugin.marketo.common.api.Marketo;
 import io.cdap.plugin.marketo.common.api.entities.DateRange;
+import io.cdap.plugin.marketo.common.api.entities.activities.ActivitiesExportRequest;
+import io.cdap.plugin.marketo.common.api.entities.activities.ExportActivityFilter;
 import io.cdap.plugin.marketo.common.api.entities.leads.LeadsExportRequest;
+import io.cdap.plugin.marketo.common.api.job.AbstractBulkExportJob;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -65,25 +67,32 @@ public class MarketoRecordReader extends RecordReader<NullWritable, Map<String, 
 
     Marketo marketo = config.getMarketo();
 
-    List<String> fields = config.getSchema().getFields().stream()
-      .map(Schema.Field::getName).collect(Collectors.toList());
     DateRange dateRange = new DateRange(beginDate, endDate);
-    LeadsExportRequest.ExportLeadFilter filter = LeadsExportRequest.ExportLeadFilter.builder()
-      .createdAt(dateRange).build();
-    LeadsExportRequest request = new LeadsExportRequest(fields, filter);
+    AbstractBulkExportJob job;
+    switch (config.getReportType()) {
+      case LEADS:
+        List<String> leadsFields = config.getSchema().getFields().stream()
+          .map(Schema.Field::getName).collect(Collectors.toList());
+        LeadsExportRequest.ExportLeadFilter leadsFilter = LeadsExportRequest.ExportLeadFilter.builder()
+          .createdAt(dateRange).build();
+        job = marketo.exportLeads(new LeadsExportRequest(leadsFields, leadsFilter));
+        break;
+      case ACTIVITIES:
+        ExportActivityFilter activitiesFilter = ExportActivityFilter.builder()
+          .createdAt(dateRange).build();
+        job = marketo.exportActivities(new ActivitiesExportRequest(Marketo.ACTIVITY_FIELDS, activitiesFilter));
+        break;
+      default:
+        throw new IllegalArgumentException("Invalid report type " + config.getReportType());
+    }
 
-    LeadsExportJob job = marketo.exportLeads(request);
-    LOG.info("Bulk leads export job with id '{}' has date range {}", job.getJobId(), dateRange);
+    LOG.info("BULK EXPORT JOB - job '{}' has date range '{}'", job.getJobId(), dateRange);
 
     // TODO handle possible concurrent issues here, another mapper can take our slot
     // wait for 10 minutes for available slot and enqueue job
     marketo.onBulkExtractQueueAvailable(job::enqueue, 60 * 10);
 
-    try {
-      job.waitCompletion();
-    } catch (InterruptedException ex) {
-      throw new RuntimeException(ex);
-    }
+    job.waitCompletion();
 
     String data = job.getFile();
     // TODO stream here
