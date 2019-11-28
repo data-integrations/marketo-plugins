@@ -22,27 +22,17 @@ import io.cdap.cdap.api.annotation.Name;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.plugin.common.ReferencePluginConfig;
 import io.cdap.plugin.marketo.common.api.Marketo;
-import io.cdap.plugin.marketo.common.api.entities.MarketoToken;
 
 /**
  * Provides all required configuration for reading Marketo entities.
  */
 public class MarketoReportingSourceConfig extends ReferencePluginConfig {
-  public static final String PROPERTY_ENTITY_NAME = "entityName";
   public static final String PROPERTY_CLIENT_ID = "clientId";
   public static final String PROPERTY_CLIENT_SECRET = "clientSecret";
   public static final String PROPERTY_REST_API_ENDPOINT = "restApiEndpoint";
-  public static final String PROPERTY_REST_API_IDENTITY = "restApiIdentity";
-  public static final String PROPERTY_DAILY_API_LIMIT = "dailyApiLimit";
   public static final String PROPERTY_REPORT_TYPE = "reportType";
-  public static final String PROPERTY_REPORT_FORMAT = "reportFormat";
   public static final String PROPERTY_START_DATE = "startDate";
   public static final String PROPERTY_END_DATE = "endDate";
-
-  @Name(PROPERTY_ENTITY_NAME)
-  @Description("Marketo entity name to fetch.")
-  @Macro
-  protected String entityName;
 
   @Name(PROPERTY_CLIENT_ID)
   @Description("Marketo Client ID.")
@@ -59,25 +49,10 @@ public class MarketoReportingSourceConfig extends ReferencePluginConfig {
   @Macro
   protected String restApiEndpoint;
 
-  @Name(PROPERTY_REST_API_IDENTITY)
-  @Description("REST API identity.")
-  @Macro
-  protected String restApiIdentity;
-
-  @Name(PROPERTY_DAILY_API_LIMIT)
-  @Description("Marketo enforced daily API limit.")
-  @Macro
-  protected String dailyApiLimit;
-
   @Name(PROPERTY_REPORT_TYPE)
   @Description("Report type format, leads or activities.")
   @Macro
   protected String reportType;
-
-  @Name(PROPERTY_REPORT_FORMAT)
-  @Description("Report format.")
-  @Macro
-  protected String reportFormat;
 
   @Name(PROPERTY_START_DATE)
   @Description("Start date for the report.")
@@ -90,7 +65,6 @@ public class MarketoReportingSourceConfig extends ReferencePluginConfig {
   protected String endDate;
 
 
-  private transient MarketoToken token = null;
   private transient Schema schema = null;
   private transient Marketo marketo = null;
 
@@ -123,18 +97,6 @@ public class MarketoReportingSourceConfig extends ReferencePluginConfig {
 
   public String getRestApiEndpoint() {
     return restApiEndpoint;
-  }
-
-  public String getRestApiIdentity() {
-    return restApiIdentity;
-  }
-
-  public String getDailyApiLimit() {
-    return dailyApiLimit;
-  }
-
-  public String getReportFormat() {
-    return reportFormat;
   }
 
   public String getStartDate() {
