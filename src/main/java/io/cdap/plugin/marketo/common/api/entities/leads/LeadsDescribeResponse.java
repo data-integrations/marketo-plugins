@@ -24,7 +24,7 @@ import java.util.List;
 /**
  * Represents leads describe response.
  */
-public class LeadsDescribe extends BaseResponse {
+public class LeadsDescribeResponse extends BaseResponse {
   /**
    * Represents lead field description.
    */

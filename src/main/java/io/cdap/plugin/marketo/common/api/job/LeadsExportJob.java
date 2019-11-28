@@ -20,6 +20,7 @@ import io.cdap.plugin.marketo.common.api.Helpers;
 import io.cdap.plugin.marketo.common.api.Marketo;
 import io.cdap.plugin.marketo.common.api.Urls;
 import io.cdap.plugin.marketo.common.api.entities.leads.LeadsExport;
+import io.cdap.plugin.marketo.common.api.entities.leads.LeadsExportResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,10 +29,10 @@ import java.util.Collections;
 /**
  * Leads export job.
  */
-public class LeadsExportJob extends AbstractBulkExportJob<LeadsExport.ExportResponse> {
+public class LeadsExportJob extends AbstractBulkExportJob<LeadsExport> {
   private static final Logger LOG = LoggerFactory.getLogger(LeadsExportJob.class);
 
-  public LeadsExportJob(LeadsExport.ExportResponse lastState, Marketo marketo) {
+  public LeadsExportJob(LeadsExport lastState, Marketo marketo) {
     super(lastState.getExportId(), lastState, marketo);
   }
 
@@ -41,12 +42,12 @@ public class LeadsExportJob extends AbstractBulkExportJob<LeadsExport.ExportResp
   }
 
   @Override
-  public LeadsExport.ExportResponse getFreshState() {
+  public LeadsExport getFreshState() {
     return getMarketo().leadsExportJobStatus(getJobId());
   }
 
   @Override
-  public String getStateStatus(LeadsExport.ExportResponse state) {
+  public String getStateStatus(LeadsExport state) {
     return state.getStatus();
   }
 
@@ -61,11 +62,11 @@ public class LeadsExportJob extends AbstractBulkExportJob<LeadsExport.ExportResp
   }
 
   @Override
-  protected LeadsExport.ExportResponse enqueueImpl() {
+  protected LeadsExport enqueueImpl() {
     return getMarketo().validatedPost(
       String.format(Urls.BULK_EXPORT_LEADS_ENQUEUE, getJobId()),
       Collections.emptyMap(),
-      inputStream -> Helpers.streamToObject(inputStream, LeadsExport.class),
+      inputStream -> Helpers.streamToObject(inputStream, LeadsExportResponse.class),
       null, null).singleExport();
   }
 }

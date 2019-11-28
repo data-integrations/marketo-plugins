@@ -1,8 +1,8 @@
-# Marketo Reporting batch source
+# Marketo Reporting Batch Source
 
 Description
 -----------
-This plugin used to query Leads or Activities entities for specified date range from Marketo.
+This plugin is used to query Leads or Activities entities for specified date range from Marketo.
 
 Properties
 ----------
@@ -19,8 +19,8 @@ Properties
 
 ### Report
 
-**Report Type:** Type of report, leads or activities.
+**Report Type:** Type of report. One of 'leads' or 'activities'.
 
-**Start Date:** Start date of report, in ISO 8601 format(1997-07-16T19:20:30+01:00) 
+**Start Date:** Start date of report. In ISO 8601 format(1997-07-16T19:20:30+01:00).
 
-**End Date:** End date of report, in ISO 8601 format(1997-07-16T19:20:30+01:00) 
+**End Date:** End date of report. In ISO 8601 format(1997-07-16T19:20:30+01:00).

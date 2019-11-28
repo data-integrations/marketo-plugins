@@ -72,14 +72,20 @@ public class MarketoRecordReader extends RecordReader<NullWritable, Map<String, 
     switch (config.getReportType()) {
       case LEADS:
         List<String> leadsFields = config.getSchema().getFields().stream()
-          .map(Schema.Field::getName).collect(Collectors.toList());
+          .map(Schema.Field::getName)
+          .collect(Collectors.toList());
+
         LeadsExportRequest.ExportLeadFilter leadsFilter = LeadsExportRequest.ExportLeadFilter.builder()
-          .createdAt(dateRange).build();
+          .createdAt(dateRange)
+          .build();
+
         job = marketo.exportLeads(new LeadsExportRequest(leadsFields, leadsFilter));
         break;
       case ACTIVITIES:
         ExportActivityFilter activitiesFilter = ExportActivityFilter.builder()
-          .createdAt(dateRange).build();
+          .createdAt(dateRange)
+          .build();
+
         job = marketo.exportActivities(new ActivitiesExportRequest(Marketo.ACTIVITY_FIELDS, activitiesFilter));
         break;
       default:
@@ -104,7 +110,6 @@ public class MarketoRecordReader extends RecordReader<NullWritable, Map<String, 
   public boolean nextKeyValue() {
     if (iterator.hasNext()) {
       current = iterator.next().toMap();
-      LOG.debug("Got record '{}'", current.toString());
       return true;
     }
     return false;

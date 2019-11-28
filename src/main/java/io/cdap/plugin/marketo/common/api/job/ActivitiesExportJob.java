@@ -20,6 +20,7 @@ import io.cdap.plugin.marketo.common.api.Helpers;
 import io.cdap.plugin.marketo.common.api.Marketo;
 import io.cdap.plugin.marketo.common.api.Urls;
 import io.cdap.plugin.marketo.common.api.entities.activities.ActivitiesExport;
+import io.cdap.plugin.marketo.common.api.entities.activities.ActivitiesExportResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,10 +29,10 @@ import java.util.Collections;
 /**
  * Activities export job.
  */
-public class ActivitiesExportJob extends AbstractBulkExportJob<ActivitiesExport.ExportResponse> {
+public class ActivitiesExportJob extends AbstractBulkExportJob<ActivitiesExport> {
   private static final Logger LOG = LoggerFactory.getLogger(ActivitiesExportJob.class);
 
-  public ActivitiesExportJob(ActivitiesExport.ExportResponse lastState, Marketo marketo) {
+  public ActivitiesExportJob(ActivitiesExport lastState, Marketo marketo) {
     super(lastState.getExportId(), lastState, marketo);
   }
 
@@ -41,12 +42,12 @@ public class ActivitiesExportJob extends AbstractBulkExportJob<ActivitiesExport.
   }
 
   @Override
-  public ActivitiesExport.ExportResponse getFreshState() {
+  public ActivitiesExport getFreshState() {
     return getMarketo().activitiesExportJobStatus(getJobId());
   }
 
   @Override
-  public String getStateStatus(ActivitiesExport.ExportResponse state) {
+  public String getStateStatus(ActivitiesExport state) {
     return state.getStatus();
   }
 
@@ -61,11 +62,11 @@ public class ActivitiesExportJob extends AbstractBulkExportJob<ActivitiesExport.
   }
 
   @Override
-  protected ActivitiesExport.ExportResponse enqueueImpl() {
+  protected ActivitiesExport enqueueImpl() {
     return getMarketo().validatedPost(
       String.format(Urls.BULK_EXPORT_ACTIVITIES_ENQUEUE, getJobId()),
       Collections.emptyMap(),
-      inputStream -> Helpers.streamToObject(inputStream, ActivitiesExport.class),
+      inputStream -> Helpers.streamToObject(inputStream, ActivitiesExportResponse.class),
       null, null).singleExport();
   }
 }

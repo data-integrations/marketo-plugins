@@ -52,12 +52,18 @@
         {
           "widget-type": "textbox",
           "label": "Start Date",
-          "name": "startDate"
+          "name": "startDate",
+          "widget-attributes": {
+            "placeholder": "Start date in ISO 8601 format(1997-07-16T19:20:30+01:00)"
+          }
         },
         {
           "widget-type": "textbox",
           "label": "End Date",
-          "name": "endDate"
+          "name": "endDate",
+          "widget-attributes": {
+            "placeholder": "End date in ISO 8601 format(1997-07-16T19:20:30+01:00)"
+          }
         }
       ]
     }

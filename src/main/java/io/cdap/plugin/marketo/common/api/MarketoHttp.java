@@ -98,8 +98,8 @@ class MarketoHttp {
   }
 
   public <T extends BaseResponse, B> T validatedPost(String queryUrl, Map<String, String> parameters,
-                                              Function<InputStream, T> deserializer,
-                                              B body, Function<B, String> qSerializer) {
+                                                     Function<InputStream, T> deserializer,
+                                                     B body, Function<B, String> qSerializer) {
     String logUri = "POST " + buildUri(queryUrl, parameters, false).toString();
     return retryableValidate(logUri, () -> {
       URI queryUri = buildUri(queryUrl, parameters, true);
@@ -148,13 +148,11 @@ class MarketoHttp {
     try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
       HttpGet request = new HttpGet(uri);
       try (CloseableHttpResponse response = httpClient.execute(request, httpClientContext)) {
-        if (response.getStatusLine().getStatusCode() >= 300) {
-          throw new IOException(IOUtils.toString(response.getEntity().getContent(), StandardCharsets.UTF_8));
-        }
+        checkResponseCode(response);
         return deserializer.apply(response.getEntity().getContent());
       }
     } catch (Exception e) {
-      throw Helpers.failForUri("GET", uri, e);
+      throw Helpers.failForMethodAndUri("GET", uri, e);
     }
   }
 
@@ -166,10 +164,19 @@ class MarketoHttp {
         request.setEntity(new StringEntity(qSerializer.apply(body), ContentType.APPLICATION_JSON));
       }
       try (CloseableHttpResponse response = httpClient.execute(request, httpClientContext)) {
+        checkResponseCode(response);
         return respDeserializer.apply(response.getEntity().getContent());
       }
     } catch (Exception e) {
-      throw Helpers.failForUri("POST", uri, e);
+      throw Helpers.failForMethodAndUri("POST", uri, e);
+    }
+  }
+
+  private static void checkResponseCode(CloseableHttpResponse response) throws IOException {
+    int statusCode = response.getStatusLine().getStatusCode();
+    if (statusCode >= 300) {
+      String responseBody = IOUtils.toString(response.getEntity().getContent(), StandardCharsets.UTF_8);
+      throw new RuntimeException(String.format("Http code '%s', response '%s'", statusCode, responseBody));
     }
   }
 

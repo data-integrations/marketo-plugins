@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
  */
 @Plugin(type = BatchSource.PLUGIN_TYPE)
 @Name(MarketoReportingPlugin.NAME)
-@Description("Reads entities from Marketo.")
+@Description("Reads Leads or Activities from Marketo.")
 public class MarketoReportingPlugin extends BatchSource<NullWritable, Map<String, String>, StructuredRecord> {
   public static final String NAME = "MarketoReportingPlugin";
 
@@ -76,7 +76,6 @@ public class MarketoReportingPlugin extends BatchSource<NullWritable, Map<String
   }
 
   private void validateConfiguration(FailureCollector failureCollector) {
-    IdUtils.validateReferenceName(config.referenceName, failureCollector);
     config.validate(failureCollector);
     failureCollector.getOrThrowException();
   }

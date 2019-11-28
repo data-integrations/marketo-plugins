@@ -14,27 +14,29 @@
  * the License.
  */
 
-package io.cdap.plugin.marketo.source.batch;
+package io.cdap.plugin.marketo.common.api.entities.leads;
+
+import io.cdap.plugin.marketo.common.api.entities.BaseResponse;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
- * Represents report type.
+ * Represents leads bulk export response.
  */
-public enum ReportType {
-  LEADS("leads"),
-  ACTIVITIES("activities");
+public class LeadsExportResponse extends BaseResponse {
 
-  private String type;
+  List<LeadsExport> result = Collections.emptyList();
 
-  ReportType(String type) {
-    this.type = type;
-  }
-
-  public static ReportType fromString(String reportType) {
-    for (ReportType rt : ReportType.values()) {
-      if (rt.type.equals(reportType)) {
-        return rt;
-      }
+  public LeadsExport singleExport() {
+    if (result.size() != 1) {
+      throw new IllegalStateException("Expected single export job result.");
     }
-    throw new IllegalArgumentException("Unknown report type: " + reportType);
+    return result.get(0);
   }
+
+  public List<LeadsExport> getResult() {
+    return result;
+  }
+
 }

@@ -22,12 +22,13 @@ import io.cdap.cdap.api.annotation.Macro;
 import io.cdap.cdap.api.annotation.Name;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.etl.api.FailureCollector;
+import io.cdap.plugin.common.IdUtils;
 import io.cdap.plugin.common.ReferencePluginConfig;
-import io.cdap.plugin.marketo.common.api.Helpers;
 import io.cdap.plugin.marketo.common.api.Marketo;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 
 /**
@@ -71,7 +72,6 @@ public class MarketoReportingSourceConfig extends ReferencePluginConfig {
   @Macro
   protected String endDate;
 
-
   private transient Schema schema = null;
   private transient Marketo marketo = null;
 
@@ -92,7 +92,6 @@ public class MarketoReportingSourceConfig extends ReferencePluginConfig {
     }
     return marketo;
   }
-
 
   public String getClientId() {
     return clientId;
@@ -119,6 +118,7 @@ public class MarketoReportingSourceConfig extends ReferencePluginConfig {
   }
 
   void validate(FailureCollector failureCollector) {
+    IdUtils.validateReferenceName(referenceName, failureCollector);
     validateDate(failureCollector);
     validateReportType(failureCollector);
     validateMarketoEndpoint(failureCollector);
@@ -126,22 +126,37 @@ public class MarketoReportingSourceConfig extends ReferencePluginConfig {
   }
 
   void validateDate(FailureCollector failureCollector) {
+    if (!containsMacro(PROPERTY_START_DATE)) {
+      try {
+        OffsetDateTime.parse(getStartDate());
+      } catch (DateTimeParseException ex) {
+        failureCollector.addFailure("Failed to parse start date.",
+                                    "Correct date to ISO 8601 format.")
+          .withConfigProperty(PROPERTY_START_DATE);
+      }
+    }
+
+    if (!containsMacro(PROPERTY_END_DATE)) {
+      try {
+        OffsetDateTime.parse(getStartDate());
+      } catch (DateTimeParseException ex) {
+        failureCollector.addFailure("Failed to parse end date.",
+                                    "Correct date to ISO 8601 format.")
+          .withConfigProperty(PROPERTY_END_DATE);
+      }
+    }
+
     if (!(containsMacro(PROPERTY_START_DATE) && containsMacro(PROPERTY_END_DATE))) {
       try {
-        Helpers.getDateRanges(getStartDate(), getEndDate());
-      } catch (IllegalArgumentException ex) {
-        String message = String.format("Failed to validate dates: %s.", ex.getMessage());
-        String correctiveAction = null;
-        if (ex.getMessage().contains("start date more than end date")) {
-          message = "Start date more than end date.";
-          correctiveAction = "Swap dates.";
+        OffsetDateTime start = OffsetDateTime.parse(getStartDate());
+        OffsetDateTime end = OffsetDateTime.parse(getEndDate());
+
+        if (start.compareTo(end) > 0) {
+          failureCollector.addFailure("Start date cannot be greater than the end date.", "Swap dates.")
+            .withConfigProperty(PROPERTY_START_DATE).withConfigProperty(PROPERTY_END_DATE);
         }
-        failureCollector.addFailure(message, correctiveAction)
-          .withConfigProperty(PROPERTY_START_DATE).withConfigProperty(PROPERTY_END_DATE);
       } catch (DateTimeParseException ex) {
-        failureCollector.addFailure("Failed to parse one of dates.",
-                                    "Correct dates to ISO 8601 format.")
-          .withConfigProperty(PROPERTY_START_DATE).withConfigProperty(PROPERTY_END_DATE);
+        // silently ignore parsing exceptions, we already pushed messages for malformed dates
       }
     }
   }
@@ -160,14 +175,12 @@ public class MarketoReportingSourceConfig extends ReferencePluginConfig {
 
   void validateSecrets(FailureCollector failureCollector) {
     if (!containsMacro(PROPERTY_CLIENT_ID) && Strings.isNullOrEmpty(getClientId())) {
-      failureCollector.addFailure("Client ID is null or empty.",
-                                  "Set Client ID to non empty string.")
+      failureCollector.addFailure("Client ID is empty.", null)
         .withConfigProperty(PROPERTY_CLIENT_ID);
     }
 
     if (!containsMacro(PROPERTY_CLIENT_SECRET) && Strings.isNullOrEmpty(getClientSecret())) {
-      failureCollector.addFailure("Client Secret is null or empty.",
-                                  "Set Client Secret to non empty string.")
+      failureCollector.addFailure("Client Secret is empty.", null)
         .withConfigProperty(PROPERTY_CLIENT_SECRET);
     }
   }
@@ -178,8 +191,7 @@ public class MarketoReportingSourceConfig extends ReferencePluginConfig {
         new URL(getRestApiEndpoint());
       } catch (MalformedURLException e) {
         failureCollector
-          .addFailure(String.format("Malformed Marketo Rest API endpoint URL '%s'.", getRestApiEndpoint()),
-                      "Change URL to valid.")
+          .addFailure(String.format("Malformed Marketo Rest API endpoint URL '%s'.", getRestApiEndpoint()), null)
           .withConfigProperty(PROPERTY_REST_API_ENDPOINT);
       }
     }

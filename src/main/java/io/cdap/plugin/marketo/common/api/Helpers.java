@@ -41,7 +41,7 @@ public class Helpers {
     try {
       return IOUtils.toString(inputStream, StandardCharsets.UTF_8);
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new RuntimeException(String.format("Failed to read stream completely due to '%s'", e.getMessage()));
     }
   }
 
@@ -49,13 +49,13 @@ public class Helpers {
     return Marketo.GSON.fromJson(new InputStreamReader(inputStream), cls);
   }
 
-  public static RuntimeException failForUri(String method, URI uri, Exception ex) {
+  public static RuntimeException failForMethodAndUri(String method, URI uri, Exception ex) {
     String message = ex.getMessage();
     if (Strings.isNullOrEmpty(message)) {
       if (ex.getCause() != null) {
         message = ex.getCause().getMessage();
         if (Strings.isNullOrEmpty(message)) {
-          message = "failed to make request";
+          message = "Unknown failure";
         }
       }
     }
@@ -66,9 +66,10 @@ public class Helpers {
     uriBuilder.setParameters(queryParameters);
     try {
       String uriString = uriBuilder.build().toString();
-      return new RuntimeException(String.format("Failed %s %s - %s", method, uriString, message));
+      return new RuntimeException(String.format("Failed '%s' '%s' - '%s'", method, uriString, message));
     } catch (URISyntaxException e) {
-      return new RuntimeException(message);
+      // this will never happen since we rebuilding already validated uri, just make compiler happy
+      return new RuntimeException(e);
     }
   }
 
@@ -85,7 +86,7 @@ public class Helpers {
     OffsetDateTime end = OffsetDateTime.parse(endDate);
 
     if (start.compareTo(end) > 0) {
-      throw new IllegalArgumentException("start date more than end date");
+      throw new IllegalArgumentException("Start date cannot be greater than the end date.");
     }
 
     int compareResult = start.plusDays(30).compareTo(end);

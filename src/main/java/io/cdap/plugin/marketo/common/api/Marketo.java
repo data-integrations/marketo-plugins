@@ -21,10 +21,12 @@ import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
 import io.cdap.plugin.marketo.common.api.entities.activities.ActivitiesExport;
 import io.cdap.plugin.marketo.common.api.entities.activities.ActivitiesExportRequest;
+import io.cdap.plugin.marketo.common.api.entities.activities.ActivitiesExportResponse;
 import io.cdap.plugin.marketo.common.api.entities.activities.ActivityTypeResponse;
-import io.cdap.plugin.marketo.common.api.entities.leads.LeadsDescribe;
+import io.cdap.plugin.marketo.common.api.entities.leads.LeadsDescribeResponse;
 import io.cdap.plugin.marketo.common.api.entities.leads.LeadsExport;
 import io.cdap.plugin.marketo.common.api.entities.leads.LeadsExportRequest;
+import io.cdap.plugin.marketo.common.api.entities.leads.LeadsExportResponse;
 import io.cdap.plugin.marketo.common.api.job.ActivitiesExportJob;
 import io.cdap.plugin.marketo.common.api.job.LeadsExportJob;
 import org.slf4j.Logger;
@@ -54,9 +56,9 @@ public class Marketo extends MarketoHttp {
     super(marketoEndpoint, clientId, clientSecret);
   }
 
-  public List<LeadsDescribe.LeadAttribute> describeLeads() {
+  public List<LeadsDescribeResponse.LeadAttribute> describeLeads() {
     return StreamSupport.stream(Spliterators.spliteratorUnknownSize(
-      iteratePage(Urls.LEADS_DESCRIBE, LeadsDescribe.class, LeadsDescribe::getResult),
+      iteratePage(Urls.LEADS_DESCRIBE, LeadsDescribeResponse.class, LeadsDescribeResponse::getResult),
       Spliterator.ORDERED), false).collect(Collectors.toList());
   }
 
@@ -67,30 +69,30 @@ public class Marketo extends MarketoHttp {
   }
 
   public LeadsExportJob exportLeads(LeadsExportRequest request) {
-    LeadsExport export = validatedPost(Urls.BULK_EXPORT_LEADS_CREATE, Collections.emptyMap(),
-                                       Marketo::streamToLeadsExport,
-                                       request,
-                                       GSON::toJson);
+    LeadsExportResponse export = validatedPost(Urls.BULK_EXPORT_LEADS_CREATE, Collections.emptyMap(),
+                                               Marketo::streamToLeadsExport,
+                                               request,
+                                               GSON::toJson);
     return new LeadsExportJob(export.singleExport(), this);
   }
 
-  public LeadsExport.ExportResponse leadsExportJobStatus(String jobId) {
-    LeadsExport currentResp = validatedGet(
+  public LeadsExport leadsExportJobStatus(String jobId) {
+    LeadsExportResponse currentResp = validatedGet(
       String.format(Urls.BULK_EXPORT_LEADS_STATUS, jobId),
       Collections.emptyMap(), Marketo::streamToLeadsExport);
     return currentResp.singleExport();
   }
 
   public ActivitiesExportJob exportActivities(ActivitiesExportRequest request) {
-    ActivitiesExport export = validatedPost(Urls.BULK_EXPORT_ACTIVITIES_CREATE, Collections.emptyMap(),
-                                            Marketo::streamToActivitiesExport,
-                                            request,
-                                            GSON::toJson);
+    ActivitiesExportResponse export = validatedPost(Urls.BULK_EXPORT_ACTIVITIES_CREATE, Collections.emptyMap(),
+                                                    Marketo::streamToActivitiesExport,
+                                                    request,
+                                                    GSON::toJson);
     return new ActivitiesExportJob(export.singleExport(), this);
   }
 
-  public ActivitiesExport.ExportResponse activitiesExportJobStatus(String jobId) {
-    ActivitiesExport currentResp = validatedGet(
+  public ActivitiesExport activitiesExportJobStatus(String jobId) {
+    ActivitiesExportResponse currentResp = validatedGet(
       String.format(Urls.BULK_EXPORT_ACTIVITIES_STATUS, jobId),
       Collections.emptyMap(), Marketo::streamToActivitiesExport);
     return currentResp.singleExport();
@@ -117,30 +119,30 @@ public class Marketo extends MarketoHttp {
         }
       }
     }
-    throw new RuntimeException("Failed to get slot in bulk export queue - timeout");
+    throw new RuntimeException("Failed to get slot in bulk export queue due to timeout");
   }
 
-  public static LeadsExport streamToLeadsExport(InputStream inputStream) {
-    return Helpers.streamToObject(inputStream, LeadsExport.class);
+  public static LeadsExportResponse streamToLeadsExport(InputStream inputStream) {
+    return Helpers.streamToObject(inputStream, LeadsExportResponse.class);
   }
 
-  public static ActivitiesExport streamToActivitiesExport(InputStream inputStream) {
-    return Helpers.streamToObject(inputStream, ActivitiesExport.class);
+  public static ActivitiesExportResponse streamToActivitiesExport(InputStream inputStream) {
+    return Helpers.streamToObject(inputStream, ActivitiesExportResponse.class);
   }
 
   private boolean canEnqueueJob() {
-    LeadsExport leadsExportJobs = validatedGet(Urls.BULK_EXPORT_LEADS_LIST,
-                                               ImmutableMap.of("status", "queued,processing"),
-                                               Marketo::streamToLeadsExport
+    LeadsExportResponse leadsExportResponseJobs = validatedGet(Urls.BULK_EXPORT_LEADS_LIST,
+                                                               ImmutableMap.of("status", "queued,processing"),
+                                                               Marketo::streamToLeadsExport
     );
 
-    int jobsInQueue = leadsExportJobs.getResult().size();
+    int jobsInQueue = leadsExportResponseJobs.getResult().size();
 
-    ActivitiesExport activitiesExportJobs = validatedGet(Urls.BULK_EXPORT_ACTIVITIES_LIST,
-                                                         ImmutableMap.of("status", "queued,processing"),
-                                                         Marketo::streamToActivitiesExport
+    ActivitiesExportResponse activitiesExportResponceJobs = validatedGet(Urls.BULK_EXPORT_ACTIVITIES_LIST,
+                                                                         ImmutableMap.of("status", "queued,processing"),
+                                                                         Marketo::streamToActivitiesExport
     );
-    jobsInQueue += activitiesExportJobs.getResult().size();
+    jobsInQueue += activitiesExportResponceJobs.getResult().size();
 
     LOG.debug("Jobs in queue: {}", jobsInQueue);
 
