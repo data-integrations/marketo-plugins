@@ -16,12 +16,19 @@
 
 package io.cdap.plugin.marketo.source.batch;
 
+import com.google.common.base.Strings;
 import io.cdap.cdap.api.annotation.Description;
 import io.cdap.cdap.api.annotation.Macro;
 import io.cdap.cdap.api.annotation.Name;
 import io.cdap.cdap.api.data.schema.Schema;
+import io.cdap.cdap.etl.api.FailureCollector;
 import io.cdap.plugin.common.ReferencePluginConfig;
+import io.cdap.plugin.marketo.common.api.Helpers;
 import io.cdap.plugin.marketo.common.api.Marketo;
+
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.time.format.DateTimeParseException;
 
 /**
  * Provides all required configuration for reading Marketo entities.
@@ -109,5 +116,72 @@ public class MarketoReportingSourceConfig extends ReferencePluginConfig {
 
   public ReportType getReportType() {
     return ReportType.fromString(reportType);
+  }
+
+  void validate(FailureCollector failureCollector) {
+    validateDate(failureCollector);
+    validateReportType(failureCollector);
+    validateMarketoEndpoint(failureCollector);
+    validateSecrets(failureCollector);
+  }
+
+  void validateDate(FailureCollector failureCollector) {
+    if (!(containsMacro(PROPERTY_START_DATE) && containsMacro(PROPERTY_END_DATE))) {
+      try {
+        Helpers.getDateRanges(getStartDate(), getEndDate());
+      } catch (IllegalArgumentException ex) {
+        String message = String.format("Failed to validate dates: %s.", ex.getMessage());
+        String correctiveAction = null;
+        if (ex.getMessage().contains("start date more than end date")) {
+          message = "Start date more than end date.";
+          correctiveAction = "Swap dates.";
+        }
+        failureCollector.addFailure(message, correctiveAction)
+          .withConfigProperty(PROPERTY_START_DATE).withConfigProperty(PROPERTY_END_DATE);
+      } catch (DateTimeParseException ex) {
+        failureCollector.addFailure("Failed to parse one of dates.",
+                                    "Correct dates to ISO 8601 format.")
+          .withConfigProperty(PROPERTY_START_DATE).withConfigProperty(PROPERTY_END_DATE);
+      }
+    }
+  }
+
+  void validateReportType(FailureCollector failureCollector) {
+    if (!containsMacro(PROPERTY_REPORT_TYPE)) {
+      try {
+        getReportType();
+      } catch (IllegalArgumentException ex) {
+        failureCollector.addFailure(String.format("Incorrect reporting type '%s'.", reportType),
+                                    "Set reporting type to 'activities' or 'leads'.")
+          .withConfigProperty(PROPERTY_REPORT_TYPE);
+      }
+    }
+  }
+
+  void validateSecrets(FailureCollector failureCollector) {
+    if (!containsMacro(PROPERTY_CLIENT_ID) && Strings.isNullOrEmpty(getClientId())) {
+      failureCollector.addFailure("Client ID is null or empty.",
+                                  "Set Client ID to non empty string.")
+        .withConfigProperty(PROPERTY_CLIENT_ID);
+    }
+
+    if (!containsMacro(PROPERTY_CLIENT_SECRET) && Strings.isNullOrEmpty(getClientSecret())) {
+      failureCollector.addFailure("Client Secret is null or empty.",
+                                  "Set Client Secret to non empty string.")
+        .withConfigProperty(PROPERTY_CLIENT_SECRET);
+    }
+  }
+
+  void validateMarketoEndpoint(FailureCollector failureCollector) {
+    if (!containsMacro(PROPERTY_REST_API_ENDPOINT)) {
+      try {
+        new URL(getRestApiEndpoint());
+      } catch (MalformedURLException e) {
+        failureCollector
+          .addFailure(String.format("Malformed Marketo Rest API endpoint URL '%s'.", getRestApiEndpoint()),
+                      "Change URL to valid.")
+          .withConfigProperty(PROPERTY_REST_API_ENDPOINT);
+      }
+    }
   }
 }

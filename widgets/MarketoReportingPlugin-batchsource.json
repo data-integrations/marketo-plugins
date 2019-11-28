@@ -38,7 +38,7 @@
       "label": "Report",
       "properties": [
         {
-          "widget-type": "textbox",
+          "widget-type": "select",
           "label": "Report Type",
           "name": "reportType",
           "widget-attributes": {
