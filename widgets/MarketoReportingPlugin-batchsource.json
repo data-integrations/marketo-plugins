@@ -11,18 +11,61 @@
           "widget-type": "textbox",
           "label": "Reference Name",
           "name": "referenceName"
+        },
+        {
+          "widget-type": "textbox",
+          "label": "Rest API endpoint",
+          "name": "restApiEndpoint"
         }
       ]
     },
     {
-      "label": "Advanced",
-      "properties": [ ]
+      "label": "Authentication",
+      "properties": [
+        {
+          "widget-type": "textbox",
+          "label": "Client ID",
+          "name": "clientId"
+        },
+        {
+          "widget-type": "password",
+          "label": "Client Secret",
+          "name": "clientSecret"
+        }
+      ]
+    },
+    {
+      "label": "Report",
+      "properties": [
+        {
+          "widget-type": "textbox",
+          "label": "Report Type",
+          "name": "reportType",
+          "widget-attributes": {
+            "default": "leads",
+            "values": [
+              "leads",
+              "activities"
+            ]
+          }
+        },
+        {
+          "widget-type": "textbox",
+          "label": "Start Date",
+          "name": "startDate"
+        },
+        {
+          "widget-type": "textbox",
+          "label": "End Date",
+          "name": "endDate"
+        }
+      ]
     }
   ],
   "outputs": [
     {
       "widget-type": "non-editable-schema-editor",
-      "schema": { }
+      "schema": {}
     }
   ]
 }
