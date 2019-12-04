@@ -1,0 +1,77 @@
+{
+  "metadata": {
+    "spec-version": "1.0"
+  },
+  "display-name": "Marketo Reporting",
+  "configuration-groups": [
+    {
+      "label": "General",
+      "properties": [
+        {
+          "widget-type": "textbox",
+          "label": "Reference Name",
+          "name": "referenceName"
+        },
+        {
+          "widget-type": "textbox",
+          "label": "Rest API endpoint",
+          "name": "restApiEndpoint"
+        }
+      ]
+    },
+    {
+      "label": "Authentication",
+      "properties": [
+        {
+          "widget-type": "textbox",
+          "label": "Client ID",
+          "name": "clientId"
+        },
+        {
+          "widget-type": "password",
+          "label": "Client Secret",
+          "name": "clientSecret"
+        }
+      ]
+    },
+    {
+      "label": "Report",
+      "properties": [
+        {
+          "widget-type": "select",
+          "label": "Report Type",
+          "name": "reportType",
+          "widget-attributes": {
+            "default": "leads",
+            "values": [
+              "leads",
+              "activities"
+            ]
+          }
+        },
+        {
+          "widget-type": "textbox",
+          "label": "Start Date",
+          "name": "startDate",
+          "widget-attributes": {
+            "placeholder": "Start date in ISO 8601 format(1997-07-16T19:20:30+01:00)"
+          }
+        },
+        {
+          "widget-type": "textbox",
+          "label": "End Date",
+          "name": "endDate",
+          "widget-attributes": {
+            "placeholder": "End date in ISO 8601 format(1997-07-16T19:20:30+01:00)"
+          }
+        }
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "widget-type": "non-editable-schema-editor",
+      "schema": {}
+    }
+  ]
+}
