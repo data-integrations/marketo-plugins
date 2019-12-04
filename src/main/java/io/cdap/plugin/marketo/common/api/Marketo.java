@@ -29,6 +29,8 @@ import io.cdap.plugin.marketo.common.api.entities.leads.LeadsExportRequest;
 import io.cdap.plugin.marketo.common.api.entities.leads.LeadsExportResponse;
 import io.cdap.plugin.marketo.common.api.job.ActivitiesExportJob;
 import io.cdap.plugin.marketo.common.api.job.LeadsExportJob;
+import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +39,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Spliterator;
 import java.util.Spliterators;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -51,6 +54,14 @@ public class Marketo extends MarketoHttp {
                                                                       "activityTypeId", "campaignId",
                                                                       "primaryAttributeValueId",
                                                                       "primaryAttributeValue", "attributes");
+  /**
+   * Job queue will be checked every 60 seconds.
+   */
+  private static final long JOB_QUEUE_POLL_INTERVAL = 60;
+  /**
+   * Wait for 10 seconds before trying to enqueue job, this will minimize chance of race condition.
+   */
+  private static final long JOB_QUEUE_POLL_DELAY = 10;
 
   public Marketo(String marketoEndpoint, String clientId, String clientSecret) {
     super(marketoEndpoint, clientId, clientSecret);
@@ -104,22 +115,17 @@ public class Marketo extends MarketoHttp {
    * @param action         action to execute once slot is available
    * @param timeoutSeconds timeout in seconds
    */
-  public void onBulkExtractQueueAvailable(Runnable action, long timeoutSeconds) {
-    long timeoutMillis = TimeUnit.SECONDS.toMillis(timeoutSeconds);
-    long startTime = System.currentTimeMillis();
-    while (System.currentTimeMillis() - startTime < timeoutMillis) {
-      if (canEnqueueJob()) {
-        action.run();
-        return;
-      } else {
-        try {
-          Thread.sleep(TimeUnit.SECONDS.toMillis(60));
-        } catch (InterruptedException e) {
-          throw new RuntimeException("Failed to get slot in bulk export queue - interrupted");
-        }
-      }
+  public void onBulkExtractQueueAvailable(Callable<Boolean> action, long timeoutSeconds) {
+    try {
+      Awaitility.given()
+        .ignoreException(TooManyJobsException.class) // ignore exception in case another reader took our slot
+        .atMost(timeoutSeconds, TimeUnit.SECONDS)
+        .pollInterval(JOB_QUEUE_POLL_INTERVAL, TimeUnit.SECONDS)
+        .pollDelay(JOB_QUEUE_POLL_DELAY, TimeUnit.SECONDS)
+        .until(action);
+    } catch (ConditionTimeoutException ex) {
+      throw new RuntimeException("Failed to get slot in bulk export queue due to timeout");
     }
-    throw new RuntimeException("Failed to get slot in bulk export queue due to timeout");
   }
 
   public static LeadsExportResponse streamToLeadsExport(InputStream inputStream) {
@@ -130,7 +136,12 @@ public class Marketo extends MarketoHttp {
     return Helpers.streamToObject(inputStream, ActivitiesExportResponse.class);
   }
 
-  private boolean canEnqueueJob() {
+  /**
+   * Check if job can be enqueued.
+   *
+   * @return true, if job can be enqueued
+   */
+  public boolean canEnqueueJob() {
     LeadsExportResponse leadsExportResponseJobs = validatedGet(Urls.BULK_EXPORT_LEADS_LIST,
                                                                ImmutableMap.of("status", "queued,processing"),
                                                                Marketo::streamToLeadsExport

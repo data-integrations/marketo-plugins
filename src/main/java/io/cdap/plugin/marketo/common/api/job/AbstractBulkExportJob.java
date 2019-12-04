@@ -97,10 +97,14 @@ public abstract class AbstractBulkExportJob<T> {
     }
   }
 
-  public void enqueue() {
+  public boolean enqueue() {
     if (!getStateStatus(getLastState()).equals(ENQUEUE_ABLE_STATUS)) {
       throw new IllegalStateException("Job must be in Created status before enqueuing, but was in " +
                                         getStateStatus(getLastState()));
+    }
+
+    if (!marketo.canEnqueueJob()) {
+      return false;
     }
 
     T newState = enqueueImpl();
@@ -113,6 +117,8 @@ public abstract class AbstractBulkExportJob<T> {
     }
 
     lastState = newState;
+
+    return true;
   }
 
   private void logStatusChange(String oldStatus, String newStatus) {

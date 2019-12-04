@@ -49,6 +49,10 @@ import java.util.stream.Collectors;
 public class MarketoRecordReader extends RecordReader<NullWritable, Map<String, String>> {
   private static final Logger LOG = LoggerFactory.getLogger(MarketoRecordReader.class);
   private static final Gson GSON = new GsonBuilder().create();
+  /**
+   * Wait for 25 minutes for available slot in queue.
+   */
+  private static final long JOB_ENQUEUE_TIMEOUT = 25 * 60;
   private Map<String, String> current = null;
   private Iterator<CSVRecord> iterator = null;
   private String beginDate;
@@ -94,14 +98,12 @@ public class MarketoRecordReader extends RecordReader<NullWritable, Map<String, 
 
     LOG.info("BULK EXPORT JOB - job '{}' has date range '{}'", job.getJobId(), dateRange);
 
-    // TODO handle possible concurrent issues here, another mapper can take our slot
-    // wait for 10 minutes for available slot and enqueue job
-    marketo.onBulkExtractQueueAvailable(job::enqueue, 60 * 10);
+    // wait for 25 minutes for available slot and enqueue job
+    marketo.onBulkExtractQueueAvailable(job::enqueue, JOB_ENQUEUE_TIMEOUT);
 
     job.waitCompletion();
 
     String data = job.getFile();
-    // TODO stream here
     CSVParser parser = CSVFormat.DEFAULT.withHeader().parse(new StringReader(data));
     iterator = parser.iterator();
   }

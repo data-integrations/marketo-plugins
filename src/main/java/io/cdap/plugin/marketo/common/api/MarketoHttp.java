@@ -107,6 +107,7 @@ class MarketoHttp {
     });
   }
 
+  // code: 1029, message: Too many jobs (10) in queue
   private <T extends BaseResponse> T retryableValidate(String logUri, Supplier<T> tryQuery) {
     T result = tryQuery.get();
     // check for expired token
@@ -139,9 +140,25 @@ class MarketoHttp {
         msg = msg + " - " + errors;
         LOG.error(msg);
       }
-      throw new RuntimeException(msg);
+      throw mapErrorsToException(result.getErrors(), msg);
     }
     return result;
+  }
+
+  private RuntimeException mapErrorsToException(List<Error> errors, String defaultMessage) {
+    if (errors.size() == 1) {
+      Error e = errors.get(0);
+      String message = e.getMessage();
+      if (e.getCode() == 1029 && message != null && message.contains("many jobs")) {
+        return new TooManyJobsException();
+      } else {
+        // this error don't require specific handling
+        return new RuntimeException(defaultMessage);
+      }
+    } else {
+      // something outstanding happened and we have more than one error, we can't handle this in specific way
+      return new RuntimeException(defaultMessage);
+    }
   }
 
   public <T> T get(URI uri, Function<InputStream, T> deserializer) {
