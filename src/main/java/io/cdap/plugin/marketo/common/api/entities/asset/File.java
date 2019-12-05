@@ -16,9 +16,12 @@
 
 package io.cdap.plugin.marketo.common.api.entities.asset;
 
+import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
+
 /**
  * File entity.
  */
+@Entity
 public class File {
   String createdAt;
   String description;

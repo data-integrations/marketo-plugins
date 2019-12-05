@@ -17,6 +17,7 @@
 package io.cdap.plugin.marketo.common.api.entities.asset;
 
 import com.google.gson.annotations.SerializedName;
+import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
 
 import java.util.Collections;
 import java.util.List;
@@ -24,6 +25,7 @@ import java.util.List;
 /**
  * Thank you page behaviors for the form.
  */
+@Entity
 public class FormThankYouPageDTO {
   @SerializedName("default")
   Boolean isDefault;
@@ -32,4 +34,28 @@ public class FormThankYouPageDTO {
   String operator;
   String subjectField;
   List<String> values = Collections.emptyList();
+
+  public Boolean getDefault() {
+    return isDefault;
+  }
+
+  public String getFollowupType() {
+    return followupType;
+  }
+
+  public String getFollowupValue() {
+    return followupValue;
+  }
+
+  public String getOperator() {
+    return operator;
+  }
+
+  public String getSubjectField() {
+    return subjectField;
+  }
+
+  public List<String> getValues() {
+    return values;
+  }
 }

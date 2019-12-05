@@ -16,9 +16,12 @@
 
 package io.cdap.plugin.marketo.common.api.entities.asset;
 
+import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
+
 /**
  * Segmentation entity.
  */
+@Entity
 public class Segmentation {
   String createdAt;
   String description;

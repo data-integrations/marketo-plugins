@@ -16,9 +16,12 @@
 
 package io.cdap.plugin.marketo.common.api.entities.asset;
 
+import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
+
 /**
  * Folder entity.
  */
+@Entity
 public class Folder {
   Integer accessZoneId;
   String createdAt;

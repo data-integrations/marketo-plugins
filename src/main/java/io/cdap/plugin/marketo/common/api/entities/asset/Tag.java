@@ -16,9 +16,12 @@
 
 package io.cdap.plugin.marketo.common.api.entities.asset;
 
+import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
+
 /**
  * Tag entity.
  */
+@Entity
 public class Tag {
   String applicableProgramTypes;
   String required;

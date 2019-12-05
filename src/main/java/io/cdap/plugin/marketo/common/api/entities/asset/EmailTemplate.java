@@ -16,9 +16,12 @@
 
 package io.cdap.plugin.marketo.common.api.entities.asset;
 
+import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
+
 /**
  * Email template entity.
  */
+@Entity
 public class EmailTemplate {
   String createdAt;
   String description;

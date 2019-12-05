@@ -16,12 +16,15 @@
 
 package io.cdap.plugin.marketo.common.api.entities.asset;
 
+import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
+
 import java.util.Collections;
 import java.util.List;
 
 /**
  * Recurrence descriptor.
  */
+@Entity
 public class Recurrence {
   String startAt;
   String endAt;

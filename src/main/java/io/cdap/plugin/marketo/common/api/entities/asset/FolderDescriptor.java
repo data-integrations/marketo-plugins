@@ -16,13 +16,22 @@
 
 package io.cdap.plugin.marketo.common.api.entities.asset;
 
+import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
+
 /**
  * Folder descriptor.
  */
+@Entity
 public class FolderDescriptor {
   String id;
   String type;
   String folderName;
+
+  public FolderDescriptor(String id, String type, String folderName) {
+    this.id = id;
+    this.type = type;
+    this.folderName = folderName;
+  }
 
   public String getId() {
     return id;

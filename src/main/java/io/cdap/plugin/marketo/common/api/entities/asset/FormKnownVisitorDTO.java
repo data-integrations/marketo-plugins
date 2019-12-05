@@ -16,10 +16,21 @@
 
 package io.cdap.plugin.marketo.common.api.entities.asset;
 
+import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
+
 /**
  * Known visitor behavior for the form.
  */
+@Entity
 public class FormKnownVisitorDTO {
   String template;
   String type;
+
+  public String getTemplate() {
+    return template;
+  }
+
+  public String getType() {
+    return type;
+  }
 }

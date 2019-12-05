@@ -16,9 +16,12 @@
 
 package io.cdap.plugin.marketo.common.api.entities.asset;
 
+import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
+
 /**
  * Program entity.
  */
+@Entity
 public class Program {
   String channel;
   String createdAt;
@@ -33,6 +36,9 @@ public class Program {
   String updatedAt;
   String url;
   String workspace;
+
+  public Program() {
+  }
 
   public String getChannel() {
     return channel;
@@ -84,5 +90,118 @@ public class Program {
 
   public String getWorkspace() {
     return workspace;
+  }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  /**
+   * Builder for Program entity.
+   */
+  public static class Builder {
+
+    private String channel;
+    private String createdAt;
+    private String description;
+    private FolderDescriptor folder;
+    private Integer id;
+    private String name;
+    private String sfdcId;
+    private String sfdcName;
+    private String status;
+    private String type;
+    private String updatedAt;
+    private String url;
+    private String workspace;
+
+    private Builder() {
+    }
+
+    public Builder channel(String channel) {
+      this.channel = channel;
+      return Builder.this;
+    }
+
+    public Builder createdAt(String createdAt) {
+      this.createdAt = createdAt;
+      return Builder.this;
+    }
+
+    public Builder description(String description) {
+      this.description = description;
+      return Builder.this;
+    }
+
+    public Builder folder(FolderDescriptor folder) {
+      this.folder = folder;
+      return Builder.this;
+    }
+
+    public Builder id(Integer id) {
+      this.id = id;
+      return Builder.this;
+    }
+
+    public Builder name(String name) {
+      this.name = name;
+      return Builder.this;
+    }
+
+    public Builder sfdcId(String sfdcId) {
+      this.sfdcId = sfdcId;
+      return Builder.this;
+    }
+
+    public Builder sfdcName(String sfdcName) {
+      this.sfdcName = sfdcName;
+      return Builder.this;
+    }
+
+    public Builder status(String status) {
+      this.status = status;
+      return Builder.this;
+    }
+
+    public Builder type(String type) {
+      this.type = type;
+      return Builder.this;
+    }
+
+    public Builder updatedAt(String updatedAt) {
+      this.updatedAt = updatedAt;
+      return Builder.this;
+    }
+
+    public Builder url(String url) {
+      this.url = url;
+      return Builder.this;
+    }
+
+    public Builder workspace(String workspace) {
+      this.workspace = workspace;
+      return Builder.this;
+    }
+
+    public Program build() {
+
+      return new Program(this);
+    }
+  }
+
+  private Program(Builder builder) {
+    this.channel = builder.channel;
+    this.createdAt = builder.createdAt;
+    this.description = builder.description;
+    this.folder = builder.folder;
+    this.id = builder.id;
+    this.name = builder.name;
+    this.sfdcId = builder.sfdcId;
+    this.sfdcName = builder.sfdcName;
+    this.status = builder.status;
+    this.type = builder.type;
+    this.updatedAt = builder.updatedAt;
+    this.url = builder.url;
+    this.workspace = builder.workspace;
   }
 }

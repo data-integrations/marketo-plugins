@@ -16,12 +16,16 @@
 
 package io.cdap.plugin.marketo.common.api.entities.asset;
 
+import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
+
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 /**
  * Email entity.
  */
+@Entity
 public class Email {
   String createdAt;
   String description;
@@ -127,5 +131,179 @@ public class Email {
 
   public List<EmailCCField> getCcFields() {
     return ccFields;
+  }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  /**
+   * Builder for Email entity.
+   */
+  public static class Builder {
+
+    private String createdAt;
+    private String description;
+    private FolderDescriptor folder;
+    private EmailField fromEmail;
+    private EmailField fromName;
+    private Integer id;
+    private String name;
+    private Boolean operational;
+    private Boolean publishToMSI;
+    private EmailField replyEmail;
+    private String status;
+    private EmailField subject;
+    private Integer template;
+    private Boolean textOnly;
+    private String updatedAt;
+    private String url;
+    private Integer version;
+    private Boolean webView;
+    private String workspace;
+    private Boolean autoCopyToText;
+    private List<EmailCCField> ccFields = new ArrayList<>();
+
+    public Builder() {
+    }
+
+    public Builder createdAt(String createdAt) {
+      this.createdAt = createdAt;
+      return Builder.this;
+    }
+
+    public Builder description(String description) {
+      this.description = description;
+      return Builder.this;
+    }
+
+    public Builder folder(FolderDescriptor folder) {
+      this.folder = folder;
+      return Builder.this;
+    }
+
+    public Builder fromEmail(EmailField fromEmail) {
+      this.fromEmail = fromEmail;
+      return Builder.this;
+    }
+
+    public Builder fromName(EmailField fromName) {
+      this.fromName = fromName;
+      return Builder.this;
+    }
+
+    public Builder id(Integer id) {
+      this.id = id;
+      return Builder.this;
+    }
+
+    public Builder name(String name) {
+      this.name = name;
+      return Builder.this;
+    }
+
+    public Builder operational(Boolean operational) {
+      this.operational = operational;
+      return Builder.this;
+    }
+
+    public Builder publishToMSI(Boolean publishToMSI) {
+      this.publishToMSI = publishToMSI;
+      return Builder.this;
+    }
+
+    public Builder replyEmail(EmailField replyEmail) {
+      this.replyEmail = replyEmail;
+      return Builder.this;
+    }
+
+    public Builder status(String status) {
+      this.status = status;
+      return Builder.this;
+    }
+
+    public Builder subject(EmailField subject) {
+      this.subject = subject;
+      return Builder.this;
+    }
+
+    public Builder template(Integer template) {
+      this.template = template;
+      return Builder.this;
+    }
+
+    public Builder textOnly(Boolean textOnly) {
+      this.textOnly = textOnly;
+      return Builder.this;
+    }
+
+    public Builder updatedAt(String updatedAt) {
+      this.updatedAt = updatedAt;
+      return Builder.this;
+    }
+
+    public Builder url(String url) {
+      this.url = url;
+      return Builder.this;
+    }
+
+    public Builder version(Integer version) {
+      this.version = version;
+      return Builder.this;
+    }
+
+    public Builder webView(Boolean webView) {
+      this.webView = webView;
+      return Builder.this;
+    }
+
+    public Builder workspace(String workspace) {
+      this.workspace = workspace;
+      return Builder.this;
+    }
+
+    public Builder autoCopyToText(Boolean autoCopyToText) {
+      this.autoCopyToText = autoCopyToText;
+      return Builder.this;
+    }
+
+    public Builder ccFields(List<EmailCCField> ccFields) {
+      this.ccFields = ccFields;
+      return Builder.this;
+    }
+
+    public Builder addCcFields(EmailCCField ccFields) {
+      this.ccFields.add(ccFields);
+      return Builder.this;
+    }
+
+    public Email build() {
+
+      return new Email(this);
+    }
+  }
+
+  private Email(Builder builder) {
+    this.createdAt = builder.createdAt;
+    this.description = builder.description;
+    this.folder = builder.folder;
+    this.fromEmail = builder.fromEmail;
+    this.fromName = builder.fromName;
+    this.id = builder.id;
+    this.name = builder.name;
+    this.operational = builder.operational;
+    this.publishToMSI = builder.publishToMSI;
+    this.replyEmail = builder.replyEmail;
+    this.status = builder.status;
+    this.subject = builder.subject;
+    this.template = builder.template;
+    this.textOnly = builder.textOnly;
+    this.updatedAt = builder.updatedAt;
+    this.url = builder.url;
+    this.version = builder.version;
+    this.webView = builder.webView;
+    this.workspace = builder.workspace;
+    this.autoCopyToText = builder.autoCopyToText;
+    this.ccFields = builder.ccFields;
   }
 }

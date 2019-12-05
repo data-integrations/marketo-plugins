@@ -14,23 +14,14 @@
  * the License.
  */
 
-package io.cdap.plugin.marketo.common.api.entities.asset;
+package io.cdap.plugin.marketo.common.api.entities.asset.gen;
 
-import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
 /**
- * Email field.
+ * Marks class as entity for contrib/Generate.java utility.
  */
-@Entity
-public class EmailField {
-  String type;
-  String value;
-
-  public String getType() {
-    return type;
-  }
-
-  public String getValue() {
-    return value;
-  }
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Entity {
 }

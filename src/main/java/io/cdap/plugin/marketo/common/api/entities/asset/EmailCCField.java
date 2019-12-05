@@ -16,14 +16,27 @@
 
 package io.cdap.plugin.marketo.common.api.entities.asset;
 
+import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
+
 /**
  * Email CC field.
  */
+@Entity
 public class EmailCCField {
   String attributeId;
   String objectName;
   String displayName;
   String apiName;
+
+  public EmailCCField() {
+  }
+
+  public EmailCCField(String attributeId, String objectName, String displayName, String apiName) {
+    this.attributeId = attributeId;
+    this.objectName = objectName;
+    this.displayName = displayName;
+    this.apiName = apiName;
+  }
 
   public String getAttributeId() {
     return attributeId;
