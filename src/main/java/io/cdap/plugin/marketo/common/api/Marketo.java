@@ -19,6 +19,9 @@ package io.cdap.plugin.marketo.common.api;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import io.cdap.plugin.marketo.common.api.entities.Warning;
+import io.cdap.plugin.marketo.common.api.entities.WarningDeserializer;
 import io.cdap.plugin.marketo.common.api.entities.activities.ActivitiesExport;
 import io.cdap.plugin.marketo.common.api.entities.activities.ActivitiesExportRequest;
 import io.cdap.plugin.marketo.common.api.entities.activities.ActivitiesExportResponse;
@@ -49,7 +52,9 @@ import java.util.stream.StreamSupport;
  */
 public class Marketo extends MarketoHttp {
   private static final Logger LOG = LoggerFactory.getLogger(Marketo.class);
-  static final Gson GSON = new Gson();
+  static final Gson GSON = new GsonBuilder()
+    .registerTypeAdapter(Warning.class, new WarningDeserializer())
+    .create();
   public static final List<String> ACTIVITY_FIELDS = ImmutableList.of("marketoGUID", "leadId", "activityDate",
                                                                       "activityTypeId", "campaignId",
                                                                       "primaryAttributeValueId",

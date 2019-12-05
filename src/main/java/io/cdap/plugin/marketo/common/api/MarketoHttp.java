@@ -68,6 +68,11 @@ class MarketoHttp {
     token = refreshToken();
   }
 
+  private <T extends BaseResponse> T getPage(String queryUrl, Class<T> pageClass, Map<String, String> parameters) {
+    return validatedGet(queryUrl, parameters,
+                        inputStream -> Helpers.streamToObject(inputStream, pageClass));
+  }
+
   private <T extends BaseResponse> T getPage(String queryUrl, Class<T> pageClass) {
     return validatedGet(queryUrl, Collections.emptyMap(),
                         inputStream -> Helpers.streamToObject(inputStream, pageClass));
@@ -82,9 +87,17 @@ class MarketoHttp {
     return null;
   }
 
-  <T extends BaseResponse, I> MarketoPageIterator<T, I> iteratePage(String queryUrl,
-                                                                    Class<T> pageClass,
-                                                                    Function<T, List<I>> resultsGetter) {
+  public <T extends BaseResponse, I> MarketoPageIterator<T, I> iteratePage(String queryUrl,
+                                                                           Class<T> pageClass,
+                                                                           Function<T, List<I>> resultsGetter,
+                                                                           Map<String, String> parameters) {
+    return new MarketoPageIterator<>(getPage(queryUrl, pageClass, parameters), this, queryUrl, pageClass,
+                                     resultsGetter);
+  }
+
+  public <T extends BaseResponse, I> MarketoPageIterator<T, I> iteratePage(String queryUrl,
+                                                                           Class<T> pageClass,
+                                                                           Function<T, List<I>> resultsGetter) {
     return new MarketoPageIterator<>(getPage(queryUrl, pageClass), this, queryUrl, pageClass, resultsGetter);
   }
 
