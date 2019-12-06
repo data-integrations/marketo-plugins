@@ -21,7 +21,7 @@ import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
 /**
  * SmartCampaign entity.
  */
-@Entity
+@Entity(topLevel = true)
 public class SmartCampaign {
   Integer id;
   String name;

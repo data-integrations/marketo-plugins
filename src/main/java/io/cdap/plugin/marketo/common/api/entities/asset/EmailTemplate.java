@@ -21,7 +21,7 @@ import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
 /**
  * Email template entity.
  */
-@Entity
+@Entity(topLevel = true)
 public class EmailTemplate {
   String createdAt;
   String description;

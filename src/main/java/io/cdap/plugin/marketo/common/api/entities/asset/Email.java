@@ -25,7 +25,7 @@ import java.util.List;
 /**
  * Email entity.
  */
-@Entity
+@Entity(topLevel = true)
 public class Email {
   String createdAt;
   String description;

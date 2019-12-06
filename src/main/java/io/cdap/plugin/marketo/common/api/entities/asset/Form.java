@@ -24,7 +24,7 @@ import java.util.List;
 /**
  * Form entity.
  */
-@Entity
+@Entity(topLevel = true)
 public class Form {
   String buttonLabel;
   Integer buttonLocation;

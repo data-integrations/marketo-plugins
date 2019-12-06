@@ -21,7 +21,7 @@ import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
 /**
  * Segmentation entity.
  */
-@Entity
+@Entity(topLevel = true)
 public class Segmentation {
   String createdAt;
   String description;

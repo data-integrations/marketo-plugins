@@ -21,7 +21,7 @@ import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
 /**
  * Snippet entity.
  */
-@Entity
+@Entity(topLevel = true)
 public class Snippet {
   String createdAt;
   String description;

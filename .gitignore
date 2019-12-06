@@ -9,7 +9,7 @@
 *.versionsBackup
 
 # Intellij Files & Dir #
-*.iml
+**/*.iml
 *.ipr
 *.iws
 atlassian-ide-plugin.xml

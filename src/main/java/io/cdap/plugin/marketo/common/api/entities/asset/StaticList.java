@@ -21,7 +21,7 @@ import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
 /**
  * StaticList entity.
  */
-@Entity
+@Entity(topLevel = true)
 public class StaticList {
   Integer id;
   String name;

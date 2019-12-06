@@ -21,7 +21,7 @@ import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
 /**
  * Tag entity.
  */
-@Entity
+@Entity(topLevel = true)
 public class Tag {
   String applicableProgramTypes;
   String required;

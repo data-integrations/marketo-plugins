@@ -21,7 +21,7 @@ import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
 /**
  * Program entity.
  */
-@Entity
+@Entity(topLevel = true)
 public class Program {
   String channel;
   String createdAt;

@@ -21,7 +21,7 @@ import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
 /**
  * Form filed entity.
  */
-@Entity
+@Entity(topLevel = true)
 public class FormField {
   String dataType;
   String defaultValue;
