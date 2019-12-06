@@ -1,0 +1,94 @@
+{
+  "metadata": {
+    "spec-version": "1.0"
+  },
+  "display-name": "Marketo Entity",
+  "configuration-groups": [
+    {
+      "label": "General",
+      "properties": [
+        {
+          "widget-type": "textbox",
+          "label": "Reference Name",
+          "name": "referenceName"
+        },
+        {
+          "widget-type": "textbox",
+          "label": "Rest API endpoint",
+          "name": "restApiEndpoint"
+        },
+        {
+          "widget-type": "select",
+          "label": "Entity Type",
+          "name": "entityType",
+          "widget-attributes": {
+            "default": "File",
+            "values": [
+              "Email",
+              "EmailTemplate",
+              "File",
+              "Folder",
+              "Form",
+              "FormField",
+              "LandingPage",
+              "LandingPageTemplate",
+              "Program",
+              "Segmentation",
+              "SmartCampaign",
+              "SmartList",
+              "Snippet",
+              "StaticList",
+              "Tag"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "label": "Authentication",
+      "properties": [
+        {
+          "widget-type": "textbox",
+          "label": "Client ID",
+          "name": "clientId"
+        },
+        {
+          "widget-type": "password",
+          "label": "Client Secret",
+          "name": "clientSecret"
+        }
+      ]
+    },
+    {
+      "label": "Advanced",
+      "properties": [
+        {
+          "widget-type": "number",
+          "label": "Splits Count",
+          "name": "splitsCount",
+          "widget-attributes": {
+            "default": 2,
+            "min": 1,
+            "max": 5
+          }
+        },
+        {
+          "widget-type": "number",
+          "label": "Max Results Per Page",
+          "name": "resultsPerPage",
+          "widget-attributes": {
+            "default": 200,
+            "min": 20,
+            "max": 200
+          }
+        }
+      ]
+    }
+  ],
+  "outputs": [
+    {
+      "widget-type": "non-editable-schema-editor",
+      "schema": {}
+    }
+  ]
+}
