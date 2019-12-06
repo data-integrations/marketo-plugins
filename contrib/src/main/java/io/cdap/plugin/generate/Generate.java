@@ -17,14 +17,18 @@
 package io.cdap.plugin.generate;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.ClassPath;
 import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
 import io.cdap.cdap.api.data.format.StructuredRecord;
 import io.cdap.cdap.api.data.schema.Schema;
+import io.cdap.plugin.marketo.common.api.Marketo;
 import io.cdap.plugin.marketo.common.api.entities.asset.gen.Entity;
+import io.cdap.plugin.marketo.common.api.entities.asset.gen.Response;
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
@@ -32,6 +36,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.lang.model.element.Modifier;
@@ -46,6 +51,53 @@ import javax.lang.model.element.Modifier;
 public class Generate {
   public static void main(String... args) throws IOException {
     List<MethodSpec> methods = new ArrayList<>();
+    List<String> withoutPaging = getResponseClasses().stream()
+      .filter(Generate::isNotPaged)
+      .map(Generate::getItemClsForResponseCls)
+      .map(aClass -> "EntityType."+aClass.getSimpleName().toUpperCase())
+      .collect(Collectors.toList());
+
+    FieldSpec withoutPagingField = FieldSpec.builder(ClassName.bestGuess("List<EntityType>"), "ENTITIES_WITHOUT_PAGING")
+      .addModifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+      .initializer("$T.of(\n$L\n)", ImmutableList.class, String.join(",\n", withoutPaging))
+      .build();
+
+    MethodSpec supportPagingMethod = MethodSpec.methodBuilder("supportPaging")
+      .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+      .returns(boolean.class)
+      .addParameter(ClassName.bestGuess("EntityType"), "entityType")
+      .addStatement("return !ENTITIES_WITHOUT_PAGING.contains(entityType)")
+      .build();
+
+    MethodSpec.Builder iteratorForEntityTypeBuilder = MethodSpec.methodBuilder("iteratorForEntityType")
+      .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+      .returns(Iterator.class)
+      .addParameter(Marketo.class, "marketo")
+      .addParameter(ClassName.bestGuess("EntityType"), "entityType")
+      .addParameter(int.class, "offset")
+      .addParameter(int.class, "maxResults")
+      .beginControlFlow("switch (entityType)");
+
+    getResponseClasses().forEach(aClass -> {
+      ParameterizedType baseT = (ParameterizedType) aClass.getGenericSuperclass();
+      Class responseItemClass = (Class<?>) baseT.getActualTypeArguments()[0];
+      iteratorForEntityTypeBuilder.beginControlFlow("case $L:",
+                                                    responseItemClass.getSimpleName().toUpperCase());
+      iteratorForEntityTypeBuilder.addStatement("return marketo.iteratePage(\n$S,\n $T.class,\n $T::getResult,\n " +
+                                                  "$T.of(\n\"maxReturn\",\n Integer.toString(maxResults),\n" +
+                                                  " \"offset\",\n Integer.toString(offset)\n)\n)",
+                                                getFetchUrl(aClass),
+                                                aClass, aClass,
+                                                ImmutableMap.class);
+      iteratorForEntityTypeBuilder.endControlFlow();
+    });
+    iteratorForEntityTypeBuilder.beginControlFlow("default:");
+    iteratorForEntityTypeBuilder.addStatement(
+      "throw new IllegalArgumentException(\"Unknown entity name:\" + entityType.getValue())");
+    iteratorForEntityTypeBuilder.endControlFlow();
+    iteratorForEntityTypeBuilder.endControlFlow();
+
+    methods.add(iteratorForEntityTypeBuilder.build());
 
     MethodSpec.Builder schemaForEntityNameBuilder = MethodSpec.methodBuilder("schemaForEntityName")
       .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
@@ -78,7 +130,7 @@ public class Generate {
                                               simpleTypeToCdapType(field));
         } else if (isComplexType(field)) {
           entitySchemaGenBuilder.addStatement(
-            "fields.add(Schema.Field.of($S, Schema.nullableOf(EntitySchemaHelper.$L())))",
+            "fields.add(Schema.Field.of($S, Schema.nullableOf(EntityHelper.$L())))",
             field.getName(), generateSchemaGetterMethod(field.getType()));
         } else if (isListType(field)) {
           entitySchemaGenBuilder.addStatement(
@@ -89,7 +141,7 @@ public class Generate {
         }
       }
       entitySchemaGenBuilder.addStatement(
-        "return Schema.recordOf(UUID.randomUUID().toString().replace(\"-\", \"\"), fields)");
+        "return Schema.recordOf(\"Schema\" + UUID.randomUUID().toString().replace(\"-\", \"\"), fields)");
       methods.add(entitySchemaGenBuilder.build());
     });
 
@@ -118,7 +170,7 @@ public class Generate {
                                                aClass.getSimpleName().toLowerCase(),
                                                findGetterMethod(field, aClass));
         } else if (isComplexType(field)) {
-          recordFromEntityBuilder.addStatement("builder.set($S, EntitySchemaHelper.structuredRecordFromEntity(\n" +
+          recordFromEntityBuilder.addStatement("builder.set($S, EntityHelper.structuredRecordFromEntity(\n" +
                                                  " $S,\n" +
                                                  " $L.$L(),\n" +
                                                  " schema.getField($S).getSchema().getNonNullable()))",
@@ -140,7 +192,7 @@ public class Generate {
               "builder.set(\n" +
                 "  $S,\n" +
                 "  $L.$L().stream()\n" +
-                "    .map(ent -> EntitySchemaHelper.structuredRecordFromEntity(\n" +
+                "    .map(ent -> EntityHelper.structuredRecordFromEntity(\n" +
                 "      $S,\n" +
                 "      ent,\n" +
                 "      schema.getField($S).getSchema().getNonNullable().getComponentSchema()))\n" +
@@ -185,6 +237,14 @@ public class Generate {
     );
 
     entityTypeEnumBuilder.addMethod(
+      MethodSpec.methodBuilder("getValue")
+        .addModifiers(Modifier.PUBLIC)
+        .returns(String.class)
+        .addStatement("return value")
+        .build()
+    );
+
+    entityTypeEnumBuilder.addMethod(
       MethodSpec.methodBuilder("fromString")
         .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
         .returns(ClassName.bestGuess("EntityType"))
@@ -198,8 +258,10 @@ public class Generate {
         .build()
     );
 
-    TypeSpec schemaHelperSpec = TypeSpec.classBuilder("EntitySchemaHelper")
+    TypeSpec schemaHelperSpec = TypeSpec.classBuilder("EntityHelper")
       .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+      .addField(withoutPagingField)
+      .addMethod(supportPagingMethod)
       .addMethods(methods)
       .addType(entityTypeEnumBuilder.build())
       .build();
@@ -257,7 +319,7 @@ public class Generate {
     } else if (listType.equals(Integer.class) || listType.equals(int.class)) {
       return "Schema.nullableOf(Schema.arrayOf(Schema.of(Schema.Type.INT)))";
     } else {
-      return "Schema.nullableOf(Schema.arrayOf(EntitySchemaHelper." + generateSchemaGetterMethod(listType) + "()))";
+      return "Schema.nullableOf(Schema.arrayOf(EntityHelper." + generateSchemaGetterMethod(listType) + "()))";
     }
   }
 
@@ -312,6 +374,15 @@ public class Generate {
       .collect(Collectors.toList());
   }
 
+  public static List<Class> getResponseClasses() throws IOException {
+    return ClassPath.from(Generate.class.getClassLoader())
+      .getTopLevelClasses("io.cdap.plugin.marketo.common.api.entities.asset").stream()
+      .map(ClassPath.ClassInfo::load)
+      .filter(Generate::isResponses)
+      .sorted(Comparator.comparing(Class::getSimpleName))
+      .collect(Collectors.toList());
+  }
+
   public static boolean isEntity(Class cls) {
     for (Annotation a : cls.getAnnotations()) {
       if (a.annotationType().equals(Entity.class)) {
@@ -319,6 +390,45 @@ public class Generate {
       }
     }
     return false;
+  }
+
+  public static boolean isResponses(Class cls) {
+    for (Annotation a : cls.getAnnotations()) {
+      if (a.annotationType().equals(Response.class)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public static String getFetchUrl(Class cls) {
+    for (Annotation a : cls.getAnnotations()) {
+      if (a.annotationType().equals(Response.class)) {
+        Response r = (Response) a;
+        return r.fetchUrl();
+      }
+    }
+    throw new RuntimeException();
+  }
+
+  public static boolean getPaged(Class cls) {
+    for (Annotation a : cls.getAnnotations()) {
+      if (a.annotationType().equals(Response.class)) {
+        Response r = (Response) a;
+        return r.paged();
+      }
+    }
+    throw new RuntimeException();
+  }
+
+  public static boolean isNotPaged(Class cls) {
+    return !getPaged(cls);
+  }
+
+  public static Class getItemClsForResponseCls(Class cls) {
+    ParameterizedType baseT = (ParameterizedType) cls.getGenericSuperclass();
+    Class responseItemClass = (Class<?>) baseT.getActualTypeArguments()[0];
+    return responseItemClass;
   }
 
   public static boolean isTopLevelEntity(Class cls) {

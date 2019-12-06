@@ -16,8 +16,11 @@
 
 package io.cdap.plugin.marketo.common.api.entities.asset;
 
+import io.cdap.plugin.marketo.common.api.entities.asset.gen.Response;
+
 /**
  * GET /rest/asset/v1/tagTypes.json
  */
+@Response(fetchUrl = "/rest/asset/v1/tagTypes.json")
 public class TagsResponse extends SimpleBaseResponse<Tag> {
 }

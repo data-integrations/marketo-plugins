@@ -16,9 +16,12 @@
 
 package io.cdap.plugin.marketo.common.api.entities.asset;
 
+import io.cdap.plugin.marketo.common.api.entities.asset.gen.Response;
+
 /**
  * GET /rest/asset/v1/form/fields.json
  */
+@Response(fetchUrl = "/rest/asset/v1/form/fields.json")
 public class FormFieldsResponse  extends SimpleBaseResponse<FormField> {
   
 }

@@ -16,8 +16,11 @@
 
 package io.cdap.plugin.marketo.common.api.entities.asset;
 
+import io.cdap.plugin.marketo.common.api.entities.asset.gen.Response;
+
 /**
  * GET /rest/asset/v1/staticLists.json
  */
+@Response(fetchUrl = "/rest/asset/v1/staticLists.json")
 public class StaticListsResponse  extends SimpleBaseResponse<StaticList> {
 }

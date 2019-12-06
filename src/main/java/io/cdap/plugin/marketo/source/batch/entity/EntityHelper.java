@@ -16,32 +16,51 @@
 
 package io.cdap.plugin.marketo.source.batch.entity;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import io.cdap.cdap.api.data.format.StructuredRecord;
 import io.cdap.cdap.api.data.schema.Schema;
+import io.cdap.plugin.marketo.common.api.Marketo;
 import io.cdap.plugin.marketo.common.api.entities.asset.Email;
 import io.cdap.plugin.marketo.common.api.entities.asset.EmailCCField;
 import io.cdap.plugin.marketo.common.api.entities.asset.EmailField;
+import io.cdap.plugin.marketo.common.api.entities.asset.EmailResponse;
 import io.cdap.plugin.marketo.common.api.entities.asset.EmailTemplate;
+import io.cdap.plugin.marketo.common.api.entities.asset.EmailTemplateResponse;
 import io.cdap.plugin.marketo.common.api.entities.asset.File;
 import io.cdap.plugin.marketo.common.api.entities.asset.FileFolder;
+import io.cdap.plugin.marketo.common.api.entities.asset.FileResponse;
 import io.cdap.plugin.marketo.common.api.entities.asset.Folder;
 import io.cdap.plugin.marketo.common.api.entities.asset.FolderDescriptor;
+import io.cdap.plugin.marketo.common.api.entities.asset.FolderResponse;
 import io.cdap.plugin.marketo.common.api.entities.asset.Form;
 import io.cdap.plugin.marketo.common.api.entities.asset.FormField;
+import io.cdap.plugin.marketo.common.api.entities.asset.FormFieldsResponse;
 import io.cdap.plugin.marketo.common.api.entities.asset.FormKnownVisitorDTO;
+import io.cdap.plugin.marketo.common.api.entities.asset.FormResponse;
 import io.cdap.plugin.marketo.common.api.entities.asset.FormThankYouPageDTO;
 import io.cdap.plugin.marketo.common.api.entities.asset.LandingPage;
+import io.cdap.plugin.marketo.common.api.entities.asset.LandingPageResponse;
 import io.cdap.plugin.marketo.common.api.entities.asset.LandingPageTemplate;
+import io.cdap.plugin.marketo.common.api.entities.asset.LandingPageTemplateResponse;
 import io.cdap.plugin.marketo.common.api.entities.asset.Program;
+import io.cdap.plugin.marketo.common.api.entities.asset.ProgramResponse;
 import io.cdap.plugin.marketo.common.api.entities.asset.Recurrence;
 import io.cdap.plugin.marketo.common.api.entities.asset.Segmentation;
+import io.cdap.plugin.marketo.common.api.entities.asset.SegmentationResponse;
 import io.cdap.plugin.marketo.common.api.entities.asset.SmartCampaign;
+import io.cdap.plugin.marketo.common.api.entities.asset.SmartCampaignsResponse;
 import io.cdap.plugin.marketo.common.api.entities.asset.SmartList;
+import io.cdap.plugin.marketo.common.api.entities.asset.SmartListsResponse;
 import io.cdap.plugin.marketo.common.api.entities.asset.Snippet;
+import io.cdap.plugin.marketo.common.api.entities.asset.SnippetsResponse;
 import io.cdap.plugin.marketo.common.api.entities.asset.StaticList;
+import io.cdap.plugin.marketo.common.api.entities.asset.StaticListsResponse;
 import io.cdap.plugin.marketo.common.api.entities.asset.Tag;
+import io.cdap.plugin.marketo.common.api.entities.asset.TagsResponse;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -50,7 +69,219 @@ import java.util.stream.Collectors;
  * Schema helper for entity plugin.
  */
 @SuppressWarnings("DuplicatedCode")
-public final class EntitySchemaHelper {
+public final class EntityHelper {
+  private static final List<EntityType> ENTITIES_WITHOUT_PAGING = ImmutableList.of(
+    EntityType.SEGMENTATION
+  );
+
+  public static boolean supportPaging(EntityType entityType) {
+    return !ENTITIES_WITHOUT_PAGING.contains(entityType);
+  }
+
+  public static Iterator iteratorForEntityType(Marketo marketo, EntityType entityType, int offset,
+                                               int maxResults) {
+    switch (entityType) {
+      case EMAIL: {
+        return marketo.iteratePage(
+          "/rest/asset/v1/emails.json",
+          EmailResponse.class,
+          EmailResponse::getResult,
+          ImmutableMap.of(
+            "maxReturn",
+            Integer.toString(maxResults),
+            "offset",
+            Integer.toString(offset)
+          )
+        );
+      }
+      case EMAILTEMPLATE: {
+        return marketo.iteratePage(
+          "/rest/asset/v1/emailTemplates.json",
+          EmailTemplateResponse.class,
+          EmailTemplateResponse::getResult,
+          ImmutableMap.of(
+            "maxReturn",
+            Integer.toString(maxResults),
+            "offset",
+            Integer.toString(offset)
+          )
+        );
+      }
+      case FILE: {
+        return marketo.iteratePage(
+          "/rest/asset/v1/files.json",
+          FileResponse.class,
+          FileResponse::getResult,
+          ImmutableMap.of(
+            "maxReturn",
+            Integer.toString(maxResults),
+            "offset",
+            Integer.toString(offset)
+          )
+        );
+      }
+      case FOLDER: {
+        return marketo.iteratePage(
+          "/rest/asset/v1/folders.json",
+          FolderResponse.class,
+          FolderResponse::getResult,
+          ImmutableMap.of(
+            "maxReturn",
+            Integer.toString(maxResults),
+            "offset",
+            Integer.toString(offset)
+          )
+        );
+      }
+      case FORMFIELD: {
+        return marketo.iteratePage(
+          "/rest/asset/v1/form/fields.json",
+          FormFieldsResponse.class,
+          FormFieldsResponse::getResult,
+          ImmutableMap.of(
+            "maxReturn",
+            Integer.toString(maxResults),
+            "offset",
+            Integer.toString(offset)
+          )
+        );
+      }
+      case FORM: {
+        return marketo.iteratePage(
+          "/rest/asset/v1/forms.json",
+          FormResponse.class,
+          FormResponse::getResult,
+          ImmutableMap.of(
+            "maxReturn",
+            Integer.toString(maxResults),
+            "offset",
+            Integer.toString(offset)
+          )
+        );
+      }
+      case LANDINGPAGE: {
+        return marketo.iteratePage(
+          "/rest/asset/v1/landingPages.json",
+          LandingPageResponse.class,
+          LandingPageResponse::getResult,
+          ImmutableMap.of(
+            "maxReturn",
+            Integer.toString(maxResults),
+            "offset",
+            Integer.toString(offset)
+          )
+        );
+      }
+      case LANDINGPAGETEMPLATE: {
+        return marketo.iteratePage(
+          "/rest/asset/v1/landingPageTemplates.json",
+          LandingPageTemplateResponse.class,
+          LandingPageTemplateResponse::getResult,
+          ImmutableMap.of(
+            "maxReturn",
+            Integer.toString(maxResults),
+            "offset",
+            Integer.toString(offset)
+          )
+        );
+      }
+      case PROGRAM: {
+        return marketo.iteratePage(
+          "/rest/asset/v1/programs.json",
+          ProgramResponse.class,
+          ProgramResponse::getResult,
+          ImmutableMap.of(
+            "maxReturn",
+            Integer.toString(maxResults),
+            "offset",
+            Integer.toString(offset)
+          )
+        );
+      }
+      case SEGMENTATION: {
+        return marketo.iteratePage(
+          "/rest/asset/v1/segmentation.json",
+          SegmentationResponse.class,
+          SegmentationResponse::getResult,
+          ImmutableMap.of(
+            "maxReturn",
+            Integer.toString(maxResults),
+            "offset",
+            Integer.toString(offset)
+          )
+        );
+      }
+      case SMARTCAMPAIGN: {
+        return marketo.iteratePage(
+          "/rest/asset/v1/smartCampaigns.json",
+          SmartCampaignsResponse.class,
+          SmartCampaignsResponse::getResult,
+          ImmutableMap.of(
+            "maxReturn",
+            Integer.toString(maxResults),
+            "offset",
+            Integer.toString(offset)
+          )
+        );
+      }
+      case SMARTLIST: {
+        return marketo.iteratePage(
+          "/rest/asset/v1/smartLists.json",
+          SmartListsResponse.class,
+          SmartListsResponse::getResult,
+          ImmutableMap.of(
+            "maxReturn",
+            Integer.toString(maxResults),
+            "offset",
+            Integer.toString(offset)
+          )
+        );
+      }
+      case SNIPPET: {
+        return marketo.iteratePage(
+          "/rest/asset/v1/snippets.json",
+          SnippetsResponse.class,
+          SnippetsResponse::getResult,
+          ImmutableMap.of(
+            "maxReturn",
+            Integer.toString(maxResults),
+            "offset",
+            Integer.toString(offset)
+          )
+        );
+      }
+      case STATICLIST: {
+        return marketo.iteratePage(
+          "/rest/asset/v1/staticLists.json",
+          StaticListsResponse.class,
+          StaticListsResponse::getResult,
+          ImmutableMap.of(
+            "maxReturn",
+            Integer.toString(maxResults),
+            "offset",
+            Integer.toString(offset)
+          )
+        );
+      }
+      case TAG: {
+        return marketo.iteratePage(
+          "/rest/asset/v1/tagTypes.json",
+          TagsResponse.class,
+          TagsResponse::getResult,
+          ImmutableMap.of(
+            "maxReturn",
+            Integer.toString(maxResults),
+            "offset",
+            Integer.toString(offset)
+          )
+        );
+      }
+      default: {
+        throw new IllegalArgumentException("Unknown entity name:" + entityType.getValue());
+      }
+    }
+  }
+
   public static Schema schemaForEntityName(String entityName) {
     switch (entityName) {
       case "Email": {
@@ -129,16 +360,16 @@ public final class EntitySchemaHelper {
     List<Schema.Field> fields = new ArrayList<>();
     fields.add(Schema.Field.of("createdAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("description", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntitySchemaHelper.getFolderDescriptorSchema())));
-    fields.add(Schema.Field.of("fromEmail", Schema.nullableOf(EntitySchemaHelper.getEmailFieldSchema())));
-    fields.add(Schema.Field.of("fromName", Schema.nullableOf(EntitySchemaHelper.getEmailFieldSchema())));
+    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntityHelper.getFolderDescriptorSchema())));
+    fields.add(Schema.Field.of("fromEmail", Schema.nullableOf(EntityHelper.getEmailFieldSchema())));
+    fields.add(Schema.Field.of("fromName", Schema.nullableOf(EntityHelper.getEmailFieldSchema())));
     fields.add(Schema.Field.of("id", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     fields.add(Schema.Field.of("name", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("operational", Schema.nullableOf(Schema.of(Schema.Type.BOOLEAN))));
     fields.add(Schema.Field.of("publishToMSI", Schema.nullableOf(Schema.of(Schema.Type.BOOLEAN))));
-    fields.add(Schema.Field.of("replyEmail", Schema.nullableOf(EntitySchemaHelper.getEmailFieldSchema())));
+    fields.add(Schema.Field.of("replyEmail", Schema.nullableOf(EntityHelper.getEmailFieldSchema())));
     fields.add(Schema.Field.of("status", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    fields.add(Schema.Field.of("subject", Schema.nullableOf(EntitySchemaHelper.getEmailFieldSchema())));
+    fields.add(Schema.Field.of("subject", Schema.nullableOf(EntityHelper.getEmailFieldSchema())));
     fields.add(Schema.Field.of("template", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     fields.add(Schema.Field.of("textOnly", Schema.nullableOf(Schema.of(Schema.Type.BOOLEAN))));
     fields.add(Schema.Field.of("updatedAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
@@ -148,8 +379,8 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("workspace", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("autoCopyToText", Schema.nullableOf(Schema.of(Schema.Type.BOOLEAN))));
     fields.add(Schema.Field.of("ccFields",
-                               Schema.nullableOf(Schema.arrayOf(EntitySchemaHelper.getEmailCCFieldSchema()))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+                               Schema.nullableOf(Schema.arrayOf(EntityHelper.getEmailCCFieldSchema()))));
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getEmailCCFieldSchema() {
@@ -158,21 +389,21 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("objectName", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("displayName", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("apiName", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getEmailFieldSchema() {
     List<Schema.Field> fields = new ArrayList<>();
     fields.add(Schema.Field.of("type", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("value", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getEmailTemplateSchema() {
     List<Schema.Field> fields = new ArrayList<>();
     fields.add(Schema.Field.of("createdAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("description", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntitySchemaHelper.getFolderDescriptorSchema())));
+    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntityHelper.getFolderDescriptorSchema())));
     fields.add(Schema.Field.of("id", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     fields.add(Schema.Field.of("name", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("status", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
@@ -180,21 +411,21 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("url", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("version", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     fields.add(Schema.Field.of("workspace", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getFileSchema() {
     List<Schema.Field> fields = new ArrayList<>();
     fields.add(Schema.Field.of("createdAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("description", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntitySchemaHelper.getFileFolderSchema())));
+    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntityHelper.getFileFolderSchema())));
     fields.add(Schema.Field.of("id", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     fields.add(Schema.Field.of("mimeType", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("name", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("size", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     fields.add(Schema.Field.of("updatedAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("url", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getFileFolderSchema() {
@@ -202,7 +433,7 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("id", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     fields.add(Schema.Field.of("name", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("type", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getFolderSchema() {
@@ -210,18 +441,18 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("accessZoneId", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     fields.add(Schema.Field.of("createdAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("description", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    fields.add(Schema.Field.of("folderId", Schema.nullableOf(EntitySchemaHelper.getFolderDescriptorSchema())));
+    fields.add(Schema.Field.of("folderId", Schema.nullableOf(EntityHelper.getFolderDescriptorSchema())));
     fields.add(Schema.Field.of("folderType", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("id", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     fields.add(Schema.Field.of("isArchive", Schema.nullableOf(Schema.of(Schema.Type.BOOLEAN))));
     fields.add(Schema.Field.of("isSystem", Schema.nullableOf(Schema.of(Schema.Type.BOOLEAN))));
     fields.add(Schema.Field.of("name", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    fields.add(Schema.Field.of("parent", Schema.nullableOf(EntitySchemaHelper.getFolderDescriptorSchema())));
+    fields.add(Schema.Field.of("parent", Schema.nullableOf(EntityHelper.getFolderDescriptorSchema())));
     fields.add(Schema.Field.of("path", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("updatedAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("url", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("workspace", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getFolderDescriptorSchema() {
@@ -229,7 +460,7 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("id", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("type", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("folderName", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getFormSchema() {
@@ -238,12 +469,11 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("buttonLocation", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     fields.add(Schema.Field.of("createdAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("description", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntitySchemaHelper.getFolderDescriptorSchema())));
+    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntityHelper.getFolderDescriptorSchema())));
     fields.add(Schema.Field.of("fontFamily", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("fontSize", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("id", Schema.nullableOf(Schema.of(Schema.Type.INT))));
-    fields.add(Schema.Field.of("knownVisitor",
-                               Schema.nullableOf(EntitySchemaHelper.getFormKnownVisitorDTOSchema())));
+    fields.add(Schema.Field.of("knownVisitor", Schema.nullableOf(EntityHelper.getFormKnownVisitorDTOSchema())));
     fields.add(Schema.Field.of("labelPosition", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("language", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("locale", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
@@ -251,12 +481,12 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("progressiveProfiling", Schema.nullableOf(Schema.of(Schema.Type.BOOLEAN))));
     fields.add(Schema.Field.of("status", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("thankYouList",
-                               Schema.nullableOf(Schema.arrayOf(EntitySchemaHelper.getFormThankYouPageDTOSchema()))));
+                               Schema.nullableOf(Schema.arrayOf(EntityHelper.getFormThankYouPageDTOSchema()))));
     fields.add(Schema.Field.of("theme", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("updatedAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("url", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("waitingLabel", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getFormFieldSchema() {
@@ -279,14 +509,14 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("placeholderText", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("validationMessage", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("visibleRows", Schema.nullableOf(Schema.of(Schema.Type.INT))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getFormKnownVisitorDTOSchema() {
     List<Schema.Field> fields = new ArrayList<>();
     fields.add(Schema.Field.of("template", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("type", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getFormThankYouPageDTOSchema() {
@@ -297,7 +527,7 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("operator", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("subjectField", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("values", Schema.nullableOf(Schema.arrayOf(Schema.of(Schema.Type.STRING)))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getLandingPageSchema() {
@@ -308,7 +538,7 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("customHeadHTML", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("description", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("facebookOgTags", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntitySchemaHelper.getFolderDescriptorSchema())));
+    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntityHelper.getFolderDescriptorSchema())));
     fields.add(Schema.Field.of("formPrefill", Schema.nullableOf(Schema.of(Schema.Type.BOOLEAN))));
     fields.add(Schema.Field.of("id", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     fields.add(Schema.Field.of("keywords", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
@@ -320,7 +550,7 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("title", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("updatedAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("workspace", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getLandingPageTemplateSchema() {
@@ -328,7 +558,7 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("createdAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("description", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("enableMunchkin", Schema.nullableOf(Schema.of(Schema.Type.BOOLEAN))));
-    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntitySchemaHelper.getFolderDescriptorSchema())));
+    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntityHelper.getFolderDescriptorSchema())));
     fields.add(Schema.Field.of("id", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     fields.add(Schema.Field.of("name", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("status", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
@@ -336,7 +566,7 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("updatedAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("url", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("workspace", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getProgramSchema() {
@@ -344,7 +574,7 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("channel", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("createdAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("description", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntitySchemaHelper.getFolderDescriptorSchema())));
+    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntityHelper.getFolderDescriptorSchema())));
     fields.add(Schema.Field.of("id", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     fields.add(Schema.Field.of("name", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("sfdcId", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
@@ -354,7 +584,7 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("updatedAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("url", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("workspace", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getRecurrenceSchema() {
@@ -364,26 +594,25 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("intervalType", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("interval", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     fields.add(Schema.Field.of("weekdayOnly", Schema.nullableOf(Schema.of(Schema.Type.BOOLEAN))));
-    fields.add(Schema.Field.of("weekdayMask",
-                               Schema.nullableOf(Schema.arrayOf(Schema.of(Schema.Type.STRING)))));
+    fields.add(Schema.Field.of("weekdayMask", Schema.nullableOf(Schema.arrayOf(Schema.of(Schema.Type.STRING)))));
     fields.add(Schema.Field.of("dayOfMonth", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     fields.add(Schema.Field.of("dayOfWeek", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     fields.add(Schema.Field.of("weekOfMonth", Schema.nullableOf(Schema.of(Schema.Type.INT))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getSegmentationSchema() {
     List<Schema.Field> fields = new ArrayList<>();
     fields.add(Schema.Field.of("createdAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("description", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntitySchemaHelper.getFolderDescriptorSchema())));
+    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntityHelper.getFolderDescriptorSchema())));
     fields.add(Schema.Field.of("id", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     fields.add(Schema.Field.of("name", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("status", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("updatedAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("url", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("workspace", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getSmartCampaignSchema() {
@@ -395,7 +624,7 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("isSystem", Schema.nullableOf(Schema.of(Schema.Type.BOOLEAN))));
     fields.add(Schema.Field.of("isActive", Schema.nullableOf(Schema.of(Schema.Type.BOOLEAN))));
     fields.add(Schema.Field.of("isRequestable", Schema.nullableOf(Schema.of(Schema.Type.BOOLEAN))));
-    fields.add(Schema.Field.of("recurrence", Schema.nullableOf(EntitySchemaHelper.getRecurrenceSchema())));
+    fields.add(Schema.Field.of("recurrence", Schema.nullableOf(EntityHelper.getRecurrenceSchema())));
     fields.add(Schema.Field.of("qualificationRuleType", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("qualificationRuleInterval", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     fields.add(Schema.Field.of("qualificationRuleUnit", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
@@ -404,12 +633,12 @@ public final class EntitySchemaHelper {
                                Schema.nullableOf(Schema.of(Schema.Type.BOOLEAN))));
     fields.add(Schema.Field.of("smartListId", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     fields.add(Schema.Field.of("flowId", Schema.nullableOf(Schema.of(Schema.Type.INT))));
-    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntitySchemaHelper.getFolderDescriptorSchema())));
+    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntityHelper.getFolderDescriptorSchema())));
     fields.add(Schema.Field.of("createdAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("updatedAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("workspace", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("status", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getSmartListSchema() {
@@ -420,23 +649,23 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("createdAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("updatedAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("url", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntitySchemaHelper.getFolderDescriptorSchema())));
+    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntityHelper.getFolderDescriptorSchema())));
     fields.add(Schema.Field.of("workspace", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getSnippetSchema() {
     List<Schema.Field> fields = new ArrayList<>();
     fields.add(Schema.Field.of("createdAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("description", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntitySchemaHelper.getFolderDescriptorSchema())));
+    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntityHelper.getFolderDescriptorSchema())));
     fields.add(Schema.Field.of("id", Schema.nullableOf(Schema.of(Schema.Type.INT))));
     fields.add(Schema.Field.of("name", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("status", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("updatedAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("url", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("workspace", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getStaticListSchema() {
@@ -447,10 +676,10 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("createdAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("updatedAt", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("url", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntitySchemaHelper.getFolderDescriptorSchema())));
+    fields.add(Schema.Field.of("folder", Schema.nullableOf(EntityHelper.getFolderDescriptorSchema())));
     fields.add(Schema.Field.of("workspace", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("computedUrl", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static Schema getTagSchema() {
@@ -458,7 +687,7 @@ public final class EntitySchemaHelper {
     fields.add(Schema.Field.of("applicableProgramTypes", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("required", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
     fields.add(Schema.Field.of("tagType", Schema.nullableOf(Schema.of(Schema.Type.STRING))));
-    return Schema.recordOf(UUID.randomUUID().toString().replace("-", ""), fields);
+    return Schema.recordOf("Schema" + UUID.randomUUID().toString().replace("-", ""), fields);
   }
 
   public static StructuredRecord structuredRecordFromEntity(String entityName, Object entity,
@@ -472,15 +701,15 @@ public final class EntitySchemaHelper {
         }
         builder.set("createdAt", email.getCreatedAt());
         builder.set("description", email.getDescription());
-        builder.set("folder", EntitySchemaHelper.structuredRecordFromEntity(
+        builder.set("folder", EntityHelper.structuredRecordFromEntity(
           "FolderDescriptor",
           email.getFolder(),
           schema.getField("folder").getSchema().getNonNullable()));
-        builder.set("fromEmail", EntitySchemaHelper.structuredRecordFromEntity(
+        builder.set("fromEmail", EntityHelper.structuredRecordFromEntity(
           "EmailField",
           email.getFromEmail(),
           schema.getField("fromEmail").getSchema().getNonNullable()));
-        builder.set("fromName", EntitySchemaHelper.structuredRecordFromEntity(
+        builder.set("fromName", EntityHelper.structuredRecordFromEntity(
           "EmailField",
           email.getFromName(),
           schema.getField("fromName").getSchema().getNonNullable()));
@@ -488,12 +717,12 @@ public final class EntitySchemaHelper {
         builder.set("name", email.getName());
         builder.set("operational", email.getOperational());
         builder.set("publishToMSI", email.getPublishToMSI());
-        builder.set("replyEmail", EntitySchemaHelper.structuredRecordFromEntity(
+        builder.set("replyEmail", EntityHelper.structuredRecordFromEntity(
           "EmailField",
           email.getReplyEmail(),
           schema.getField("replyEmail").getSchema().getNonNullable()));
         builder.set("status", email.getStatus());
-        builder.set("subject", EntitySchemaHelper.structuredRecordFromEntity(
+        builder.set("subject", EntityHelper.structuredRecordFromEntity(
           "EmailField",
           email.getSubject(),
           schema.getField("subject").getSchema().getNonNullable()));
@@ -508,7 +737,7 @@ public final class EntitySchemaHelper {
         builder.set(
           "ccFields",
           email.getCcFields().stream()
-            .map(ent -> EntitySchemaHelper.structuredRecordFromEntity(
+            .map(ent -> EntityHelper.structuredRecordFromEntity(
               "EmailCCField",
               ent,
               schema.getField("ccFields").getSchema().getNonNullable().getComponentSchema()))
@@ -543,7 +772,7 @@ public final class EntitySchemaHelper {
         }
         builder.set("createdAt", emailtemplate.getCreatedAt());
         builder.set("description", emailtemplate.getDescription());
-        builder.set("folder", EntitySchemaHelper.structuredRecordFromEntity(
+        builder.set("folder", EntityHelper.structuredRecordFromEntity(
           "FolderDescriptor",
           emailtemplate.getFolder(),
           schema.getField("folder").getSchema().getNonNullable()));
@@ -563,7 +792,7 @@ public final class EntitySchemaHelper {
         }
         builder.set("createdAt", file.getCreatedAt());
         builder.set("description", file.getDescription());
-        builder.set("folder", EntitySchemaHelper.structuredRecordFromEntity(
+        builder.set("folder", EntityHelper.structuredRecordFromEntity(
           "FileFolder",
           file.getFolder(),
           schema.getField("folder").getSchema().getNonNullable()));
@@ -593,7 +822,7 @@ public final class EntitySchemaHelper {
         builder.set("accessZoneId", folder.getAccessZoneId());
         builder.set("createdAt", folder.getCreatedAt());
         builder.set("description", folder.getDescription());
-        builder.set("folderId", EntitySchemaHelper.structuredRecordFromEntity(
+        builder.set("folderId", EntityHelper.structuredRecordFromEntity(
           "FolderDescriptor",
           folder.getFolderId(),
           schema.getField("folderId").getSchema().getNonNullable()));
@@ -602,7 +831,7 @@ public final class EntitySchemaHelper {
         builder.set("isArchive", folder.getArchive());
         builder.set("isSystem", folder.getSystem());
         builder.set("name", folder.getName());
-        builder.set("parent", EntitySchemaHelper.structuredRecordFromEntity(
+        builder.set("parent", EntityHelper.structuredRecordFromEntity(
           "FolderDescriptor",
           folder.getParent(),
           schema.getField("parent").getSchema().getNonNullable()));
@@ -631,14 +860,14 @@ public final class EntitySchemaHelper {
         builder.set("buttonLocation", form.getButtonLocation());
         builder.set("createdAt", form.getCreatedAt());
         builder.set("description", form.getDescription());
-        builder.set("folder", EntitySchemaHelper.structuredRecordFromEntity(
+        builder.set("folder", EntityHelper.structuredRecordFromEntity(
           "FolderDescriptor",
           form.getFolder(),
           schema.getField("folder").getSchema().getNonNullable()));
         builder.set("fontFamily", form.getFontFamily());
         builder.set("fontSize", form.getFontSize());
         builder.set("id", form.getId());
-        builder.set("knownVisitor", EntitySchemaHelper.structuredRecordFromEntity(
+        builder.set("knownVisitor", EntityHelper.structuredRecordFromEntity(
           "FormKnownVisitorDTO",
           form.getKnownVisitor(),
           schema.getField("knownVisitor").getSchema().getNonNullable()));
@@ -651,7 +880,7 @@ public final class EntitySchemaHelper {
         builder.set(
           "thankYouList",
           form.getThankYouList().stream()
-            .map(ent -> EntitySchemaHelper.structuredRecordFromEntity(
+            .map(ent -> EntityHelper.structuredRecordFromEntity(
               "FormThankYouPageDTO",
               ent,
               schema.getField("thankYouList").getSchema().getNonNullable().getComponentSchema()))
@@ -721,7 +950,7 @@ public final class EntitySchemaHelper {
         builder.set("customHeadHTML", landingpage.getCustomHeadHTML());
         builder.set("description", landingpage.getDescription());
         builder.set("facebookOgTags", landingpage.getFacebookOgTags());
-        builder.set("folder", EntitySchemaHelper.structuredRecordFromEntity(
+        builder.set("folder", EntityHelper.structuredRecordFromEntity(
           "FolderDescriptor",
           landingpage.getFolder(),
           schema.getField("folder").getSchema().getNonNullable()));
@@ -746,7 +975,7 @@ public final class EntitySchemaHelper {
         builder.set("createdAt", landingpagetemplate.getCreatedAt());
         builder.set("description", landingpagetemplate.getDescription());
         builder.set("enableMunchkin", landingpagetemplate.getEnableMunchkin());
-        builder.set("folder", EntitySchemaHelper.structuredRecordFromEntity(
+        builder.set("folder", EntityHelper.structuredRecordFromEntity(
           "FolderDescriptor",
           landingpagetemplate.getFolder(),
           schema.getField("folder").getSchema().getNonNullable()));
@@ -767,7 +996,7 @@ public final class EntitySchemaHelper {
         builder.set("channel", program.getChannel());
         builder.set("createdAt", program.getCreatedAt());
         builder.set("description", program.getDescription());
-        builder.set("folder", EntitySchemaHelper.structuredRecordFromEntity(
+        builder.set("folder", EntityHelper.structuredRecordFromEntity(
           "FolderDescriptor",
           program.getFolder(),
           schema.getField("folder").getSchema().getNonNullable()));
@@ -805,7 +1034,7 @@ public final class EntitySchemaHelper {
         }
         builder.set("createdAt", segmentation.getCreatedAt());
         builder.set("description", segmentation.getDescription());
-        builder.set("folder", EntitySchemaHelper.structuredRecordFromEntity(
+        builder.set("folder", EntityHelper.structuredRecordFromEntity(
           "FolderDescriptor",
           segmentation.getFolder(),
           schema.getField("folder").getSchema().getNonNullable()));
@@ -829,7 +1058,7 @@ public final class EntitySchemaHelper {
         builder.set("isSystem", smartcampaign.getSystem());
         builder.set("isActive", smartcampaign.getActive());
         builder.set("isRequestable", smartcampaign.getRequestable());
-        builder.set("recurrence", EntitySchemaHelper.structuredRecordFromEntity(
+        builder.set("recurrence", EntityHelper.structuredRecordFromEntity(
           "Recurrence",
           smartcampaign.getRecurrence(),
           schema.getField("recurrence").getSchema().getNonNullable()));
@@ -840,7 +1069,7 @@ public final class EntitySchemaHelper {
         builder.set("isCommunicationLimitEnabled", smartcampaign.getCommunicationLimitEnabled());
         builder.set("smartListId", smartcampaign.getSmartListId());
         builder.set("flowId", smartcampaign.getFlowId());
-        builder.set("folder", EntitySchemaHelper.structuredRecordFromEntity(
+        builder.set("folder", EntityHelper.structuredRecordFromEntity(
           "FolderDescriptor",
           smartcampaign.getFolder(),
           schema.getField("folder").getSchema().getNonNullable()));
@@ -861,7 +1090,7 @@ public final class EntitySchemaHelper {
         builder.set("createdAt", smartlist.getCreatedAt());
         builder.set("updatedAt", smartlist.getUpdatedAt());
         builder.set("url", smartlist.getUrl());
-        builder.set("folder", EntitySchemaHelper.structuredRecordFromEntity(
+        builder.set("folder", EntityHelper.structuredRecordFromEntity(
           "FolderDescriptor",
           smartlist.getFolder(),
           schema.getField("folder").getSchema().getNonNullable()));
@@ -875,7 +1104,7 @@ public final class EntitySchemaHelper {
         }
         builder.set("createdAt", snippet.getCreatedAt());
         builder.set("description", snippet.getDescription());
-        builder.set("folder", EntitySchemaHelper.structuredRecordFromEntity(
+        builder.set("folder", EntityHelper.structuredRecordFromEntity(
           "FolderDescriptor",
           snippet.getFolder(),
           schema.getField("folder").getSchema().getNonNullable()));
@@ -898,7 +1127,7 @@ public final class EntitySchemaHelper {
         builder.set("createdAt", staticlist.getCreatedAt());
         builder.set("updatedAt", staticlist.getUpdatedAt());
         builder.set("url", staticlist.getUrl());
-        builder.set("folder", EntitySchemaHelper.structuredRecordFromEntity(
+        builder.set("folder", EntityHelper.structuredRecordFromEntity(
           "FolderDescriptor",
           staticlist.getFolder(),
           schema.getField("folder").getSchema().getNonNullable()));
@@ -924,29 +1153,47 @@ public final class EntitySchemaHelper {
   }
 
   /**
-   * Valid entity types.
+   * Entity type.
    */
   public enum EntityType {
     EMAIL("Email"),
+
     EMAILTEMPLATE("EmailTemplate"),
+
     FILE("File"),
+
     FOLDER("Folder"),
+
     FORM("Form"),
+
     FORMFIELD("FormField"),
+
     LANDINGPAGE("LandingPage"),
+
     LANDINGPAGETEMPLATE("LandingPageTemplate"),
+
     PROGRAM("Program"),
+
     SEGMENTATION("Segmentation"),
+
     SMARTCAMPAIGN("SmartCampaign"),
+
     SMARTLIST("SmartList"),
+
     SNIPPET("Snippet"),
+
     STATICLIST("StaticList"),
+
     TAG("Tag");
 
     private final String value;
 
     EntityType(String value) {
       this.value = value;
+    }
+
+    public String getValue() {
+      return value;
     }
 
     public static EntityType fromString(String value) {

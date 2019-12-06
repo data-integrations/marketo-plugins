@@ -14,13 +14,16 @@
  * the License.
  */
 
-package io.cdap.plugin.marketo.common.api.entities.asset;
+package io.cdap.plugin.marketo.common.api.entities.asset.gen;
 
-import io.cdap.plugin.marketo.common.api.entities.asset.gen.Response;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
 /**
- * GET /rest/asset/v1/snippets.json
+ * Marks class as response class.
  */
-@Response(fetchUrl = "/rest/asset/v1/snippets.json")
-public class SnippetsResponse extends SimpleBaseResponse<Snippet> {
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Response {
+  String fetchUrl();
+  boolean paged() default true;
 }

@@ -16,9 +16,12 @@
 
 package io.cdap.plugin.marketo.common.api.entities.asset;
 
+import io.cdap.plugin.marketo.common.api.entities.asset.gen.Response;
+
 /**
  * GET /rest/asset/v1/segmentation.json
  * NO PAGING
  */
+@Response(fetchUrl = "/rest/asset/v1/segmentation.json", paged = false)
 public class SegmentationResponse extends SimpleBaseResponse<Segmentation> {
 }

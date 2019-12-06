@@ -28,24 +28,24 @@ import org.junit.Test;
 
 import java.util.List;
 
-public class EntitySchemaHelperTest {
+public class EntityHelperTest {
   @Test
   public void testNestedRecords() {
-    Schema programSchema = EntitySchemaHelper.getProgramSchema();
+    Schema programSchema = EntityHelper.getProgramSchema();
     Program program = Program.builder().folder(new FolderDescriptor("1234", "Hello", null))
       .build();
-    StructuredRecord programRecord = EntitySchemaHelper.structuredRecordFromEntity("Program", program,
-                                                                                   programSchema);
+    StructuredRecord programRecord = EntityHelper.structuredRecordFromEntity("Program", program,
+                                                                             programSchema);
 
     Assert.assertEquals(programRecord.<StructuredRecord>get("folder").<String>get("id"), "1234");
 
-    Schema emailSchema = EntitySchemaHelper.getEmailSchema();
+    Schema emailSchema = EntityHelper.getEmailSchema();
     Email email = Email.builder().ccFields(ImmutableList.of(
       new EmailCCField("attr1", "cc1", "cc 1", "cc1"),
       new EmailCCField("attr2", "cc2", "cc 2", "cc2")
       )).build();
-    StructuredRecord emailRecord = EntitySchemaHelper.structuredRecordFromEntity("Email", email,
-                                                                                 emailSchema);
+    StructuredRecord emailRecord = EntityHelper.structuredRecordFromEntity("Email", email,
+                                                                           emailSchema);
 
     List<StructuredRecord> ccRecords = emailRecord.<List<StructuredRecord>>get("ccFields");
     Assert.assertEquals(2, ccRecords.size());
